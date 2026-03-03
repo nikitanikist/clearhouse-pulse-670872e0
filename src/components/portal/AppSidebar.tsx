@@ -1,4 +1,5 @@
 import { LayoutDashboard, Users, Building2, Settings, LogOut } from "lucide-react";
+import clearhouseLogo from "@/assets/clearhouse-logo.png";
 import type { SecurityLevel } from "@/data/employees";
 
 export type NavSection = "dashboard" | "employees" | "teams" | "settings";
@@ -29,13 +30,8 @@ const AppSidebar = ({ activeSection, onNavigate, securityLevel, onSignOut }: App
   return (
     <aside className="w-[220px] min-w-[220px] bg-sidebar flex flex-col h-screen sticky top-0">
       {/* Logo */}
-      <div className="px-5 pt-6 pb-6">
-        <h1 className="text-lg font-heading font-extrabold tracking-[0.15em] text-sidebar-foreground">
-          CLEARHOUSE LLP
-        </h1>
-        <p className="text-[10px] tracking-widest text-sidebar-foreground/50 uppercase mt-0.5">
-          Chartered Professional Accountants
-        </p>
+      <div className="px-4 pt-6 pb-6">
+        <img src={clearhouseLogo} alt="Clearhouse LLP" className="h-8 w-auto" />
       </div>
 
       {/* Nav */}
