@@ -6,18 +6,38 @@ interface OverviewProps {
   employee: Employee;
 }
 
-const Section = ({ title, children, defaultOpen = true }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) => {
-  const [open, setOpen] = useState(defaultOpen);
+const Section = ({
+  title,
+  subtitle,
+  isOpen,
+  onToggle,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  isOpen: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}) => {
   return (
     <div className="bg-card rounded-lg border border-border shadow-sm">
       <button
-        onClick={() => setOpen(!open)}
+        onClick={onToggle}
         className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-muted/30 transition-colors"
       >
         <h3 className="text-base font-heading font-bold text-foreground">{title}</h3>
-        {open ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+        <div className="flex items-center gap-3">
+          {!isOpen && subtitle && (
+            <span className="text-sm text-muted-foreground truncate max-w-[240px]">{subtitle}</span>
+          )}
+          {isOpen ? (
+            <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+          ) : (
+            <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+          )}
+        </div>
       </button>
-      {open && <div className="px-6 pb-6 border-t border-border pt-4">{children}</div>}
+      {isOpen && <div className="px-6 pb-6 border-t border-border pt-4">{children}</div>}
     </div>
   );
 };
@@ -45,11 +65,22 @@ const RatingBadge = ({ score, max = 5 }: { score: number; max?: number }) => (
 
 const Overview = ({ employee }: OverviewProps) => {
   const [dragOver, setDragOver] = useState(false);
+  const [openSection, setOpenSection] = useState<string | null>(null);
+
+  const toggle = (key: string) => setOpenSection(prev => prev === key ? null : key);
+
+  const bffPreview = employee.bffSummary.length > 80
+    ? employee.bffSummary.slice(0, 80) + "…"
+    : employee.bffSummary;
 
   return (
     <div className="space-y-4">
-      {/* Performance */}
-      <Section title="Performance">
+      <Section
+        title="Performance"
+        subtitle={`★ ${employee.currentYearRating} / 5`}
+        isOpen={openSection === "performance"}
+        onToggle={() => toggle("performance")}
+      >
         <div className="space-y-0">
           <div className="py-3 border-b border-border">
             <p className="text-xs font-medium text-muted-foreground mb-1.5">Current Year Performance Rating</p>
@@ -68,13 +99,21 @@ const Overview = ({ employee }: OverviewProps) => {
         </div>
       </Section>
 
-      {/* BFF */}
-      <Section title="Bigger Brighter Future (BFF)">
+      <Section
+        title="Bigger Brighter Future (BFF)"
+        subtitle={bffPreview}
+        isOpen={openSection === "bff"}
+        onToggle={() => toggle("bff")}
+      >
         <InfoRow label="BFF Summary" value={employee.bffSummary} />
       </Section>
 
-      {/* Career Aspirations */}
-      <Section title="Career Aspirations">
+      <Section
+        title="Career Aspirations"
+        subtitle="CPA by Q3 2026"
+        isOpen={openSection === "career"}
+        onToggle={() => toggle("career")}
+      >
         <InfoRow label="Short Term" value="Obtain CPA designation (expected completion: Q3 2026). Take on 2 additional complex audit engagements." />
         <InfoRow label="Long Term" value="Become a Manager within 2-3 years. Eventually transition into an advisory-focused Partner track." />
         <InfoRow label="Development Needs & Plans" value="Needs deeper exposure to IFRS 16 and revenue recognition standards. Scheduled for firm-sponsored training in June 2026." />
@@ -83,9 +122,12 @@ const Overview = ({ employee }: OverviewProps) => {
         <InfoRow label="Training Recommendations" value="IFRS Advanced Certificate (CPA Ontario), Public speaking workshop, Leadership fundamentals program." />
       </Section>
 
-      {/* PDRs */}
-      <Section title="PDRs (Performance Development Reviews)">
-        {/* Upload zone */}
+      <Section
+        title="PDRs (Performance Development Reviews)"
+        subtitle="3 documents"
+        isOpen={openSection === "pdrs"}
+        onToggle={() => toggle("pdrs")}
+      >
         <div
           onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
           onDragLeave={() => setDragOver(false)}
@@ -98,7 +140,6 @@ const Overview = ({ employee }: OverviewProps) => {
           <p className="text-sm text-muted-foreground">Drag & drop PDR documents here, or <span className="text-primary cursor-pointer font-medium">click to browse</span></p>
         </div>
 
-        {/* Documents table */}
         <div className="mt-4 overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
