@@ -1,41 +1,26 @@
 
 
-# Clearhouse LLP Employee Portal — Implementation Plan
+# Add Performance Rating & BFF Filters
 
-## Overview
-A polished, management-facing Employee Portal for Clearhouse LLP (CPA firm). Pre-filled with realistic dummy data, branded to match their corporate identity, with full interactivity across all screens.
+## What's changing
+Add two new filter fields to the sidebar: **Current Year Performance Rating** and **BFF Summary keyword search**. This requires adding performance and BFF data to each employee in the data layer, then wiring up new filter controls.
 
-## Page 1: Login Screen
-- Full-screen navy gradient background with centered login card
-- Clearhouse LLP branding, email/password fields (pre-filled), security level dropdown
-- "Sign In" navigates to Dashboard
+## Data layer changes (`src/data/employees.ts`)
+- Add `currentYearRating` (number, e.g. 4.2) and `previousYearRating` (number, e.g. 3.8) fields to the `Employee` interface
+- Add `bffSummary` (string) field to the `Employee` interface
+- Populate all 10 employees with unique, realistic values for these three fields
 
-## Page 2: Dashboard Layout
-- **Left Sidebar** (~280px, navy `#1B3A5C`): Logo/tagline, search bar with real-time filtering, collapsible filter dropdowns (Department, Location, Position, Potential, Supervisor), scrollable employee list (10 employees) with colored department pills and potential-rating dots. Selected employee highlighted with blue left-border.
-- **Right Content Area**: Profile header bar (name, position, department, avatar initials), 6 horizontal tabs with blue active indicator.
+## Sidebar filter changes (`src/components/portal/Sidebar.tsx`)
+- Add a **Performance Rating** dropdown with options: "4.0+" / "3.0–3.9" / "Below 3.0" — filters on `currentYearRating`
+- Add a **BFF Keywords** text input (similar to the search bar) that filters employees whose `bffSummary` contains the typed text
+- Wire both into the existing `useMemo` filter chain
 
-## Six Content Tabs (all pre-filled with dummy data for Priya Sharma)
+## Tab updates
+- **Overview tab**: Pull `currentYearRating`, `previousYearRating`, and `bffSummary` from the selected employee's data instead of hardcoded values (so switching employees shows different data)
+- **Employee Profile tab**: No changes needed
 
-1. **Employee Profile** — Two-column info card (name, position, department, tenure, supervisor, contact info, avatar)
-2. **Overview** — 4 collapsible sub-sections: Performance (ratings, quality, contributions), Bigger Brighter Future, Career Aspirations (short/long term, gaps, training), PDRs (drag-drop upload zone + document table with download/delete icons)
-3. **Technical Competencies** — Animated progress bars for Accounting Skills and Software Proficiency (color-coded by level: Beginner/Intermediate/Advanced)
-4. **Interpersonal Skills & Firm Fit** — 9 skill assessment cards with free-form text
-5. **Growth & Potential** — Potential rating pill selector, visual dot ratings for readiness, leadership, and independence with descriptive text
-6. **Management Notes** — Timeline log with blue dot connectors, "Add Note" input that appends new notes to the list
-
-## Branding & Design
-- Colors: Primary `#0072BC`, Accent `#00A4E4`, Navy `#1B3A5C`, Background `#F5F7FA`
-- Fonts: Inter (body) + Plus Jakarta Sans (headings)
-- 8px card radius, 6px button radius, subtle shadows, smooth 200-300ms transitions
-- Lucide React icons throughout
-
-## Interactions
-- Login → Dashboard routing via React Router
-- Sidebar employee selection updates header and highlights card
-- Tab switching with animated content panels
-- Real-time search + dropdown filters on employee list
-- Collapsible sections in Overview tab
-- Add Note appends to Management Notes timeline
-- Skill bar animations on load
-- File upload zone with drag hover state (visual only)
+## Scope
+- 2 files modified: `employees.ts`, `Sidebar.tsx`
+- 1 file updated to use dynamic data: `Overview.tsx`
+- No new dependencies
 
