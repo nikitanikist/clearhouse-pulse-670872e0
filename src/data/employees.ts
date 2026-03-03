@@ -206,3 +206,21 @@ export const potentialColors: Record<PotentialRating, string> = {
   Medium: "bg-warning",
   Developing: "bg-orange-400",
 };
+
+export type SecurityLevel = 1 | 2 | 3 | 4 | 5;
+
+const hiddenPositionsByLevel: Record<SecurityLevel, Position[]> = {
+  1: [],
+  2: ["Partner"],
+  3: ["Partner", "Manager"],
+  4: ["Partner", "Manager", "Senior Associate"],
+  5: ["Partner", "Manager", "Senior Associate", "Intermediate", "Associate"],
+};
+
+export function filterBySecurityLevel(emps: Employee[], level: SecurityLevel): Employee[] {
+  if (level === 5) {
+    return emps.filter((e) => e.department === "Operations");
+  }
+  const hidden = hiddenPositionsByLevel[level];
+  return emps.filter((e) => !hidden.includes(e.position));
+}

@@ -17,7 +17,8 @@ const Login = () => {
 
   const handleSignIn = (e: React.FormEvent) => {
     e.preventDefault();
-    navigate("/dashboard");
+    const levelNum = securityLevel.charAt(6);
+    navigate(`/dashboard?level=${levelNum}`);
   };
 
   return (
