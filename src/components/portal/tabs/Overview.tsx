@@ -1,5 +1,10 @@
 import { useState } from "react";
 import { ChevronDown, ChevronRight, Upload, Download, Trash2, Star } from "lucide-react";
+import type { Employee } from "@/data/employees";
+
+interface OverviewProps {
+  employee: Employee;
+}
 
 const Section = ({ title, children, defaultOpen = true }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) => {
   const [open, setOpen] = useState(defaultOpen);
@@ -38,7 +43,7 @@ const RatingBadge = ({ score, max = 5 }: { score: number; max?: number }) => (
   </div>
 );
 
-const Overview = () => {
+const Overview = ({ employee }: OverviewProps) => {
   const [dragOver, setDragOver] = useState(false);
 
   return (
@@ -48,11 +53,11 @@ const Overview = () => {
         <div className="space-y-0">
           <div className="py-3 border-b border-border">
             <p className="text-xs font-medium text-muted-foreground mb-1.5">Current Year Performance Rating</p>
-            <RatingBadge score={4.2} />
+            <RatingBadge score={employee.currentYearRating} />
           </div>
           <div className="py-3 border-b border-border">
             <p className="text-xs font-medium text-muted-foreground mb-1.5">Previous Year Performance Rating</p>
-            <RatingBadge score={3.8} />
+            <RatingBadge score={employee.previousYearRating} />
           </div>
           <InfoRow label="Quality of Work" value="Consistently delivers accurate, well-documented work papers. Minimal review notes required." />
           <InfoRow label="Client Service Strengths" value="Excellent responsiveness to client inquiries. Builds strong rapport with mid-market clients." />
@@ -65,7 +70,7 @@ const Overview = () => {
 
       {/* BFF */}
       <Section title="Bigger Brighter Future (BFF)">
-        <InfoRow label="BFF Summary" value="Priya envisions growing into a managerial role within the Assurance practice, eventually leading a team of 5-8 associates. She is passionate about process improvement and wants to develop expertise in IFRS advisory." />
+        <InfoRow label="BFF Summary" value={employee.bffSummary} />
       </Section>
 
       {/* Career Aspirations */}

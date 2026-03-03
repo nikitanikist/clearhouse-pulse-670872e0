@@ -25,7 +25,7 @@ const Dashboard = () => {
   const renderTab = () => {
     switch (activeTab) {
       case 0: return <EmployeeProfile employee={selected} />;
-      case 1: return <Overview />;
+      case 1: return <Overview employee={selected} />;
       case 2: return <TechnicalCompetencies />;
       case 3: return <InterpersonalSkills />;
       case 4: return <GrowthPotential />;

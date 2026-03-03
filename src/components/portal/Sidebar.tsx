@@ -19,6 +19,8 @@ const Sidebar = ({ selectedId, onSelect }: SidebarProps) => {
   const [locFilter, setLocFilter] = useState<string>("");
   const [posFilter, setPosFilter] = useState<string>("");
   const [potFilter, setPotFilter] = useState<string>("");
+  const [ratingFilter, setRatingFilter] = useState<string>("");
+  const [bffSearch, setBffSearch] = useState("");
 
   const filtered = useMemo(() => {
     return employees.filter((e) => {
@@ -27,9 +29,15 @@ const Sidebar = ({ selectedId, onSelect }: SidebarProps) => {
       const matchesLoc = !locFilter || e.location === locFilter;
       const matchesPos = !posFilter || e.position === posFilter;
       const matchesPot = !potFilter || e.potential === potFilter;
-      return matchesSearch && matchesDept && matchesLoc && matchesPos && matchesPot;
+      const matchesRating = !ratingFilter || (
+        ratingFilter === "4.0+" ? e.currentYearRating >= 4.0 :
+        ratingFilter === "3.0–3.9" ? (e.currentYearRating >= 3.0 && e.currentYearRating < 4.0) :
+        e.currentYearRating < 3.0
+      );
+      const matchesBff = !bffSearch || e.bffSummary.toLowerCase().includes(bffSearch.toLowerCase());
+      return matchesSearch && matchesDept && matchesLoc && matchesPos && matchesPot && matchesRating && matchesBff;
     });
-  }, [search, deptFilter, locFilter, posFilter, potFilter]);
+  }, [search, deptFilter, locFilter, posFilter, potFilter, ratingFilter, bffSearch]);
 
   return (
     <aside className="w-[280px] min-w-[280px] bg-navy flex flex-col h-screen sticky top-0">
@@ -86,6 +94,26 @@ const Sidebar = ({ selectedId, onSelect }: SidebarProps) => {
                 ))}
               </select>
             ))}
+            <select
+              value={ratingFilter}
+              onChange={(e) => setRatingFilter(e.target.value)}
+              className="w-full py-1.5 px-2 rounded bg-white/10 text-white text-xs border border-white/10 focus:outline-none"
+            >
+              <option value="" className="text-foreground">Performance Rating: All</option>
+              <option value="4.0+" className="text-foreground">4.0+</option>
+              <option value="3.0–3.9" className="text-foreground">3.0 – 3.9</option>
+              <option value="Below 3.0" className="text-foreground">Below 3.0</option>
+            </select>
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-white/40" />
+              <input
+                type="text"
+                placeholder="BFF Keywords..."
+                value={bffSearch}
+                onChange={(e) => setBffSearch(e.target.value)}
+                className="w-full pl-7 pr-2 py-1.5 rounded bg-white/10 text-white text-xs border border-white/10 placeholder:text-white/40 focus:outline-none"
+              />
+            </div>
           </div>
         )}
       </div>
