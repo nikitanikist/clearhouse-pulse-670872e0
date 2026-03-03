@@ -1,99 +1,66 @@
 
 
-# UX/UI Redesign & Security Level Implementation
+# Employees Section UX Redesign
 
-## Problems Identified
+## Problem
+The current Employees view shows a cramped sidebar-style employee list alongside the profile detail — it feels like a nested sidebar within a sidebar, not a standard HR dashboard. The user wants a cleaner, more intuitive flow similar to modern HR platforms (like the RazorpayX reference screenshot).
 
-1. **Security levels do nothing** — all 5 levels show the same dashboard with all employees visible
-2. **Sidebar is just an employee list** — no proper navigation structure. A real portal needs nav items like Dashboard, Teams/Employees, Settings, etc.
-3. **Poor discoverability** — a new user logging in sees a wall of employee cards with no context or orientation
+## Proposed Approach: Table-First Employee Directory
 
-## Proposed Redesign
+When the user clicks **Employees** in the nav, they first see a **full-width employee table/directory** — not a split-panel. Clicking a row opens that employee's profile (either as a full-page detail view with a back button, or a slide-in panel).
 
-### 1. Restructure the Sidebar Navigation
+### Step 1: Employee Directory View (replaces the list panel)
 
-Replace the current "flat employee list" sidebar with a proper app navigation sidebar:
+A clean, full-width content area with:
+- **Header**: "Employees" title + employee count badge
+- **Search bar** (full-width, prominent) + **Filter chips/dropdowns** in a toolbar row below
+- **Table** with columns: Name (with initials avatar), Position, Department (colored pill), Location, Performance Rating, Potential (colored dot + label)
+- Rows are clickable — clicking a row opens that employee's profile
+- Subtle hover highlight on rows
 
-```text
-┌──────────────────────┐
-│ CLEARHOUSE LLP       │
-│ CPA Tagline          │
-│                      │
-│ ▸ Dashboard          │  ← Landing page with summary stats
-│ ▸ Employees          │  ← Opens employee directory (current view)
-│ ▸ Teams              │  ← Group view by department
-│ ▸ Settings           │  ← Placeholder page
-│                      │
-│ ─────────────────    │
-│ Logged in as:        │
-│ sarb@clearhouse.ca   │
-│ Level 1: Full Access │
-│ [Sign Out]           │
-└──────────────────────┘
-```
+### Step 2: Employee Profile View (detail)
 
-- **Dashboard**: A new landing page with cards showing headcount, department breakdown, top performers, recent management notes — gives users an orientation point after login
-- **Employees**: This is where the current employee list + profile tabs live. The employee list becomes a sub-panel within this section (either a left sub-sidebar or a list-detail layout)
-- **Teams**: A department-grouped view of employees (cards grouped under Assurance, Tax, Advisory, Operations headers)
-- **Settings**: A placeholder page for future configuration
+When a row is clicked:
+- Show a **back arrow + "Back to Employees"** link at the top
+- Then the existing ProfileHeader + 6 tabs layout (unchanged)
+- This replaces the table view entirely (no split panel)
 
-### 2. Implement Security Level Filtering
+### Step 3: Remove EmployeeListPanel split layout
 
-Pass the selected security level from Login to Dashboard (via URL param or React context). Then filter the employee list based on the level:
+The old 280px side panel is removed. The Employees section now has two internal states:
+- `list` — shows the directory table
+- `detail` — shows the selected employee's profile with tabs
 
-- **Level 1**: All employees visible
-- **Level 2**: Hide Partners — show Manager, Senior Associate, Intermediate, Associate only
-- **Level 3**: Hide Partners & Managers — show Senior Associate, Intermediate, Associate
-- **Level 4**: Show Intermediate and Associate only
-- **Level 5**: Show Operations position only
+## Files to Modify
 
-The security level also appears in the sidebar footer so the user knows what access they have.
-
-### 3. Employees Section — Improved Layout
-
-When user clicks "Employees" in the nav, show a **list-detail split view**:
-
-```text
-┌─────────┬──────────────────────────────────────┐
-│ Nav     │  Employee List (left)  │  Profile    │
-│ sidebar │  ┌──────────────┐     │  (right)    │
-│         │  │ Search...    │     │             │
-│         │  │ Filters ▾    │     │  [Tabs]     │
-│         │  │ Priya Sharma │     │  [Content]  │
-│         │  │ Arun Patel   │     │             │
-│         │  │ David Chen   │     │             │
-│         │  └──────────────┘     │             │
-└─────────┴──────────────────────────────────────┘
-```
-
-The employee list panel (~280px) with search + filters stays, but it's nested inside the Employees section — not the global sidebar.
-
-### 4. Dashboard Landing Page
-
-A new page with summary cards:
-- Total employees (filtered by security level)
-- Department breakdown (small bar chart or stat cards)
-- Average performance rating
-- Recent management notes (last 3-5 across all employees)
-- Quick links to high-potential employees
-
-### Files to Create/Modify
-
-| File | Action |
+| File | Change |
 |------|--------|
-| `src/pages/Login.tsx` | Pass security level via URL search param on navigate |
-| `src/pages/Dashboard.tsx` | Major restructure — add nav sidebar + route-like section switching |
-| `src/components/portal/Sidebar.tsx` | Convert to app nav sidebar (Dashboard, Employees, Teams, Settings) |
-| `src/components/portal/EmployeeListPanel.tsx` | **New** — extract current employee list + search/filters into its own panel |
-| `src/components/portal/DashboardHome.tsx` | **New** — summary/stats landing page |
-| `src/components/portal/TeamsView.tsx` | **New** — department-grouped employee cards |
-| `src/data/employees.ts` | Add security level type + filtering utility function |
+| `src/pages/Dashboard.tsx` | Add `employeeView` state (`list` | `detail`), switch between directory table and profile detail |
+| `src/components/portal/EmployeeListPanel.tsx` | **Rewrite** into `EmployeeDirectory.tsx` — full-width table with search, filters, clickable rows |
+| `src/components/portal/ProfileHeader.tsx` | No changes needed |
 
-### Security Level Flow
+## Layout Comparison
 
-1. Login page stores selected level in state
-2. On sign-in, navigate to `/dashboard?level=1` (or use React context)
-3. Dashboard reads the level and filters the employee list accordingly
-4. Sidebar footer displays current access level
-5. Employees not visible at that level are completely hidden from the list, search, and all views
+```text
+BEFORE:
+┌──────────┬──────────┬────────────────────┐
+│ Nav      │ Emp List │ Profile + Tabs     │
+│ sidebar  │ (280px)  │                    │
+└──────────┴──────────┴────────────────────┘
+
+AFTER:
+Click "Employees" → Full-width table
+┌──────────┬───────────────────────────────┐
+│ Nav      │ Employee Directory (table)    │
+│ sidebar  │ Search + Filters + Rows       │
+└──────────┴───────────────────────────────┘
+
+Click a row → Full-width profile
+┌──────────┬───────────────────────────────┐
+│ Nav      │ ← Back to Employees           │
+│ sidebar  │ ProfileHeader + Tabs          │
+└──────────┴───────────────────────────────┘
+```
+
+This matches standard HR SaaS patterns — users see the full directory first, then drill into a profile. No teaching needed.
 
