@@ -1,36 +1,45 @@
 
 
-# Teams View Redesign — Card-First with Expandable Table
+# Overview Tab — Collapsed-by-Default Accordion Redesign
 
-## What changes
+## Problem
+All 4 sections (Performance, BFF, Career Aspirations, PDRs) are expanded by default, making the page feel like a wall of text. Users have to scroll extensively to find what they need.
 
-Rewrite `TeamsView.tsx` to show **4 department summary cards** in a grid first. Clicking a card expands a **member table below the cards** for that department. Only one department table is visible at a time (clicking another card switches it).
+## Solution
+Simple but effective changes to the existing `Section` component:
+
+1. **All sections collapsed by default** — change `defaultOpen` from `true` to `false`. Users click to expand only what they need.
+2. **Only one section open at a time** — lift the open state to the parent so expanding one section auto-collapses the others (accordion behavior).
+3. **Add summary previews on collapsed cards** — show a one-line snippet on each collapsed section header so users can scan without opening:
+   - **Performance**: Show current year rating inline (e.g., "★ 4.2 / 5")
+   - **BFF**: First ~80 chars of the BFF summary
+   - **Career Aspirations**: Short-term goal preview
+   - **PDRs**: Document count (e.g., "3 documents")
 
 ## Layout
 
 ```text
-┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐
-│ Assurance  │ │    Tax     │ │  Advisory  │ │ Operations │
-│  3 members │ │  2 members │ │  3 members │ │  2 members │
-│  ★ 4.1 avg │ │  ★ 3.8 avg │ │  ★ 4.0 avg │ │  ★ 3.5 avg │
-└────────────┘ └────────────┘ └────────────┘ └────────────┘
-
-▼ Assurance — 3 members
-┌──────────────────────────────────────────────────────────┐
-│ Name          Position          Location   Rating        │
-│ Priya Sharma  Senior Associate  Canada     ★ 4.2         │
-│ ...                                                      │
-└──────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────┐
+│ ▸ Performance                    ★ 4.2 / 5  │
+├─────────────────────────────────────────────┤
+│ ▼ Bigger Brighter Future (BFF)              │
+│   ┌─────────────────────────────────────┐   │
+│   │ BFF Summary content expanded...     │   │
+│   └─────────────────────────────────────┘   │
+├─────────────────────────────────────────────┤
+│ ▸ Career Aspirations        CPA by Q3 2026  │
+├─────────────────────────────────────────────┤
+│ ▸ PDRs                        3 documents   │
+└─────────────────────────────────────────────┘
 ```
 
-## Implementation — single file change
+## Implementation — single file
 
-**`src/components/portal/TeamsView.tsx`**:
-- Add `selectedDept` state (initially `null`)
-- Render a 4-column card grid — each card shows: department name (colored), member count, average rating, and an icon
-- Clicking a card sets `selectedDept`; clicking the active card again collapses it
-- Below the grid, if `selectedDept` is set, render a table of that department's members (Name, Position, Location, Rating, Potential) — rows clickable via existing `onSelectEmployee`
-- Active card gets a highlighted border/ring to show selection state
+**`src/components/portal/tabs/Overview.tsx`**:
+- Replace individual `Section` `useState` with a single `openSection` state at the `Overview` component level (string or null)
+- Pass `isOpen` and `onToggle` props to each `Section` instead of internal state
+- Add a `subtitle` prop to `Section` — displayed as muted text on the right side of the header when collapsed
+- Set initial `openSection` to `null` (all collapsed) or optionally to `"performance"` (first section open)
 
-No other files need changes.
+No other files change.
 
