@@ -1,53 +1,57 @@
 import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
 
 type SkillLevel = "Beginner" | "Intermediate" | "Advanced";
 
 interface Skill {
   name: string;
   level: SkillLevel;
-  checked: boolean;
 }
 
-const levelVariant: Record<SkillLevel, "default" | "secondary" | "outline"> = {
-  Advanced: "default",
-  Intermediate: "secondary",
-  Beginner: "outline",
-};
+const allLevels: SkillLevel[] = ["Beginner", "Intermediate", "Advanced"];
 
 const accountingSkills: Skill[] = [
-  { name: "Bookkeeping", level: "Advanced", checked: true },
-  { name: "Year-End Prep", level: "Advanced", checked: true },
-  { name: "Personal Tax", level: "Intermediate", checked: true },
-  { name: "Corporate Tax", level: "Intermediate", checked: false },
-  { name: "Compilation Support", level: "Advanced", checked: true },
+  { name: "Bookkeeping", level: "Advanced" },
+  { name: "Year-End Prep", level: "Advanced" },
+  { name: "Personal Tax", level: "Intermediate" },
+  { name: "Corporate Tax", level: "Intermediate" },
+  { name: "Compilation Support", level: "Advanced" },
 ];
 
 const softwareSkills: Skill[] = [
-  { name: "QuickBooks Online", level: "Advanced", checked: true },
-  { name: "QuickBooks Desktop", level: "Intermediate", checked: true },
-  { name: "Excel", level: "Advanced", checked: true },
+  { name: "QuickBooks Online", level: "Advanced" },
+  { name: "QuickBooks Desktop", level: "Intermediate" },
+  { name: "Excel", level: "Advanced" },
 ];
 
 const SkillRow = ({ skill }: { skill: Skill }) => (
-  <div className="flex items-center gap-4 py-3 border-b border-border last:border-0">
-    <Checkbox checked={skill.checked} disabled className="pointer-events-none" />
-    <span className="text-sm font-medium text-foreground flex-1">{skill.name}</span>
-    <Badge variant={levelVariant[skill.level]}>{skill.level}</Badge>
-  </div>
+  <li className="flex items-center gap-2 py-2">
+    <span className="text-sm font-medium text-foreground min-w-[160px]">{skill.name}:</span>
+    <div className="flex items-center gap-4">
+      {allLevels.map((level) => (
+        <label key={level} className="flex items-center gap-1.5 cursor-default">
+          <Checkbox checked={skill.level === level} disabled className="pointer-events-none" />
+          <span className="text-sm text-muted-foreground">{level}</span>
+        </label>
+      ))}
+    </div>
+  </li>
 );
 
 const TechnicalCompetencies = () => {
   return (
     <div className="space-y-6">
       <div className="bg-card rounded-lg border border-border shadow-sm p-6">
-        <h3 className="text-base font-heading font-bold text-foreground mb-4">Accounting Skills</h3>
-        {accountingSkills.map((s) => <SkillRow key={s.name} skill={s} />)}
+        <h3 className="text-base font-heading font-bold text-foreground mb-3">Accounting Skills</h3>
+        <ul className="space-y-0.5">
+          {accountingSkills.map((s) => <SkillRow key={s.name} skill={s} />)}
+        </ul>
       </div>
 
       <div className="bg-card rounded-lg border border-border shadow-sm p-6">
-        <h3 className="text-base font-heading font-bold text-foreground mb-4">Software Proficiency</h3>
-        {softwareSkills.map((s) => <SkillRow key={s.name} skill={s} />)}
+        <h3 className="text-base font-heading font-bold text-foreground mb-3">Software Proficiency</h3>
+        <ul className="space-y-0.5">
+          {softwareSkills.map((s) => <SkillRow key={s.name} skill={s} />)}
+        </ul>
       </div>
     </div>
   );
