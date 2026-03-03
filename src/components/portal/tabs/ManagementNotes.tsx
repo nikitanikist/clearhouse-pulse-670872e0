@@ -48,27 +48,31 @@ const ManagementNotes = () => {
         </button>
       </div>
 
-      {/* Timeline */}
-      <div className="relative pl-6">
-        {/* Timeline line */}
-        <div className="absolute left-[7px] top-2 bottom-2 w-0.5 bg-primary/20" />
-
-        <div className="space-y-4">
-          {notes.map((note, i) => (
-            <div key={i} className="relative">
-              {/* Dot */}
-              <div className="absolute -left-6 top-5 w-3.5 h-3.5 rounded-full bg-primary border-2 border-background" />
-              <div className="bg-card rounded-lg border border-border shadow-sm p-5 ml-2">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xs font-medium text-muted-foreground">{note.date}</span>
-                  <span className="text-xs text-muted-foreground">·</span>
-                  <span className="text-xs font-medium text-primary">{note.author}</span>
-                </div>
-                <p className="text-sm text-foreground leading-relaxed">{note.text}</p>
-              </div>
-            </div>
-          ))}
-        </div>
+      {/* Notes Table */}
+      <div className="bg-card rounded-lg border border-border shadow-sm overflow-hidden">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-border bg-muted/30">
+              <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[140px]">Date</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Comments</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[180px]">Comments Provided By</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {notes.map((note, i) => (
+              <tr key={i} className="hover:bg-muted/40 transition-colors">
+                <td className="px-4 py-3 text-sm text-muted-foreground align-top whitespace-nowrap">{note.date}</td>
+                <td className="px-4 py-3 text-sm text-foreground leading-relaxed">{note.text}</td>
+                <td className="px-4 py-3 text-sm font-medium text-primary align-top whitespace-nowrap">{note.author}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {notes.length === 0 && (
+          <div className="py-12 text-center">
+            <p className="text-sm text-muted-foreground">No management notes yet.</p>
+          </div>
+        )}
       </div>
     </div>
   );

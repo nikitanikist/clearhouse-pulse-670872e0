@@ -22,12 +22,16 @@ const EmployeeDirectory = ({ employees, onSelectEmployee }: EmployeeDirectoryPro
   const [posFilter, setPosFilter] = useState<string>("");
   const [potFilter, setPotFilter] = useState<string>("");
   const [ratingFilter, setRatingFilter] = useState<string>("");
+  const [prevRatingFilter, setPrevRatingFilter] = useState<string>("");
 
   const filtered = useMemo(() => {
     return employees.filter((e) => {
-      const matchesSearch = e.name.toLowerCase().includes(search.toLowerCase()) ||
-        e.position.toLowerCase().includes(search.toLowerCase()) ||
-        e.department.toLowerCase().includes(search.toLowerCase());
+      const q = search.toLowerCase();
+      const matchesSearch = e.name.toLowerCase().includes(q) ||
+        e.position.toLowerCase().includes(q) ||
+        e.department.toLowerCase().includes(q) ||
+        e.supervisor.toLowerCase().includes(q) ||
+        e.bffSummary.toLowerCase().includes(q);
       const matchesDept = !deptFilter || e.department === deptFilter;
       const matchesLoc = !locFilter || e.location === locFilter;
       const matchesPos = !posFilter || e.position === posFilter;
@@ -37,9 +41,14 @@ const EmployeeDirectory = ({ employees, onSelectEmployee }: EmployeeDirectoryPro
         ratingFilter === "3.0–3.9" ? (e.currentYearRating >= 3.0 && e.currentYearRating < 4.0) :
         e.currentYearRating < 3.0
       );
-      return matchesSearch && matchesDept && matchesLoc && matchesPos && matchesPot && matchesRating;
+      const matchesPrevRating = !prevRatingFilter || (
+        prevRatingFilter === "4.0+" ? e.previousYearRating >= 4.0 :
+        prevRatingFilter === "3.0–3.9" ? (e.previousYearRating >= 3.0 && e.previousYearRating < 4.0) :
+        e.previousYearRating < 3.0
+      );
+      return matchesSearch && matchesDept && matchesLoc && matchesPos && matchesPot && matchesRating && matchesPrevRating;
     });
-  }, [employees, search, deptFilter, locFilter, posFilter, potFilter, ratingFilter]);
+  }, [employees, search, deptFilter, locFilter, posFilter, potFilter, ratingFilter, prevRatingFilter]);
 
   const clearFilters = () => {
     setDeptFilter("");
@@ -47,9 +56,10 @@ const EmployeeDirectory = ({ employees, onSelectEmployee }: EmployeeDirectoryPro
     setPosFilter("");
     setPotFilter("");
     setRatingFilter("");
+    setPrevRatingFilter("");
   };
 
-  const hasActiveFilters = deptFilter || locFilter || posFilter || potFilter || ratingFilter;
+  const hasActiveFilters = deptFilter || locFilter || posFilter || potFilter || ratingFilter || prevRatingFilter;
 
   return (
     <div className="flex-1 p-6 overflow-y-auto">
@@ -69,7 +79,7 @@ const EmployeeDirectory = ({ employees, onSelectEmployee }: EmployeeDirectoryPro
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             type="text"
-            placeholder="Search by name, position, or department..."
+            placeholder="Search by name, position, department, supervisor..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9"
@@ -87,7 +97,7 @@ const EmployeeDirectory = ({ employees, onSelectEmployee }: EmployeeDirectoryPro
           Filters
           {hasActiveFilters && (
             <span className="ml-1 w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center">
-              {[deptFilter, locFilter, posFilter, potFilter, ratingFilter].filter(Boolean).length}
+              {[deptFilter, locFilter, posFilter, potFilter, ratingFilter, prevRatingFilter].filter(Boolean).length}
             </span>
           )}
         </button>
@@ -119,7 +129,17 @@ const EmployeeDirectory = ({ employees, onSelectEmployee }: EmployeeDirectoryPro
             onChange={(e) => setRatingFilter(e.target.value)}
             className="py-2 px-3 rounded-md bg-background text-foreground text-sm border border-border focus:outline-none focus:ring-2 focus:ring-ring"
           >
-            <option value="">Rating: All</option>
+            <option value="">Current Rating: All</option>
+            <option value="4.0+">4.0+</option>
+            <option value="3.0–3.9">3.0 – 3.9</option>
+            <option value="Below 3.0">Below 3.0</option>
+          </select>
+          <select
+            value={prevRatingFilter}
+            onChange={(e) => setPrevRatingFilter(e.target.value)}
+            className="py-2 px-3 rounded-md bg-background text-foreground text-sm border border-border focus:outline-none focus:ring-2 focus:ring-ring"
+          >
+            <option value="">Prev. Rating: All</option>
             <option value="4.0+">4.0+</option>
             <option value="3.0–3.9">3.0 – 3.9</option>
             <option value="Below 3.0">Below 3.0</option>
