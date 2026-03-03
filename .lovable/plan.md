@@ -1,36 +1,20 @@
 
 
-# Overview & Technical Competencies Updates
+# Add View Button to PDR Documents
 
-## Changes
+## Problem
+The PDR documents table in the Overview tab only has Download and Delete action buttons. There's no way to view/read a document inline.
 
-### 1. Overview — Fix Section clickability & remove BFF subtitle
+## Solution
+Add an **Eye (View)** button to each document row in the Actions column, placed before the Download button. This will open the document in a new browser tab (simulated for now since docs are hardcoded).
+
+## Implementation
 
 **`src/components/portal/tabs/Overview.tsx`**:
+- Import `Eye` icon from `lucide-react`
+- Add a View button before the existing Download button in the actions `<div>`
+- Style it consistently with the existing action buttons (primary color, hover state)
+- On click, open in a new tab via `window.open()` (placeholder behavior for now)
 
-- **Remove BFF subtitle**: Remove the `subtitle={bffPreview}` prop from the BFF section and delete the `bffPreview` variable
-- **Make sections look clickable**: Update the `Section` button styling to have:
-  - A left colored accent bar (4px left border, colored with primary) on hover
-  - `cursor-pointer` explicitly
-  - Slightly bolder hover background (`hover:bg-muted/50`)
-  - Add a subtle `rounded-l-none` on the button with a colored left border on the card when hovered
-  - Add a transition `group` class and animate the chevron icon color on hover (e.g., from muted to foreground)
-  - This makes the collapsed sections visually communicate "click me"
-
-### 2. Technical Competencies — Add checkbox-based skill assessment
-
-**`src/components/portal/tabs/TechnicalCompetencies.tsx`**:
-
-- Replace the progress-bar skill view with a **checkbox checklist** approach
-- Group competencies into categories (Accounting Skills, Software Proficiency) as before
-- Each skill becomes a row with: **Checkbox** (checked = competent), **Skill name**, and optionally a **level indicator** (Beginner/Intermediate/Advanced as a badge)
-- Checkboxes are read-only for now (visual representation of assessed competencies)
-- This mirrors a "document checklist" pattern where the CA has uploaded/verified competencies
-
-## Files to modify
-
-| File | Change |
-|------|--------|
-| `src/components/portal/tabs/Overview.tsx` | Remove BFF subtitle, improve section hover/click affordance |
-| `src/components/portal/tabs/TechnicalCompetencies.tsx` | Replace progress bars with checkbox checklist rows |
+Single file, minimal change — just adding one icon button per row.
 
