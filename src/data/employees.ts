@@ -16,6 +16,9 @@ export interface Employee {
   tenure: string;
   tenureInRole: string;
   supervisor: string;
+  currentYearRating: number;
+  previousYearRating: number;
+  bffSummary: string;
 }
 
 export const employees: Employee[] = [
@@ -32,6 +35,9 @@ export const employees: Employee[] = [
     tenure: "4 years, 3 months",
     tenureInRole: "1 year, 8 months",
     supervisor: "David Chen (Manager)",
+    currentYearRating: 4.2,
+    previousYearRating: 3.8,
+    bffSummary: "Priya envisions growing into a managerial role within the Assurance practice, eventually leading a team of 5-8 associates. She is passionate about process improvement and wants to develop expertise in IFRS advisory.",
   },
   {
     id: "2",
@@ -46,6 +52,9 @@ export const employees: Employee[] = [
     tenure: "2 years, 1 month",
     tenureInRole: "2 years, 1 month",
     supervisor: "Michael Roberts (Manager)",
+    currentYearRating: 3.5,
+    previousYearRating: 3.2,
+    bffSummary: "Arun aims to specialize in international tax compliance, particularly cross-border Canada-India transactions. He sees himself as a tax advisory specialist within 3 years.",
   },
   {
     id: "3",
@@ -60,6 +69,9 @@ export const employees: Employee[] = [
     tenure: "8 years, 6 months",
     tenureInRole: "3 years, 2 months",
     supervisor: "Sarb Clearhouse (Partner)",
+    currentYearRating: 4.6,
+    previousYearRating: 4.4,
+    bffSummary: "David aspires to become a Partner within 5 years, focusing on growing the firm's mid-market assurance practice and mentoring the next generation of managers.",
   },
   {
     id: "4",
@@ -74,6 +86,9 @@ export const employees: Employee[] = [
     tenure: "1 year, 9 months",
     tenureInRole: "1 year, 9 months",
     supervisor: "David Chen (Manager)",
+    currentYearRating: 2.8,
+    previousYearRating: 2.5,
+    bffSummary: "Emily is exploring whether she wants to pursue advisory consulting or move toward a project management role. She values variety in her work assignments.",
   },
   {
     id: "5",
@@ -88,6 +103,9 @@ export const employees: Employee[] = [
     tenure: "5 years, 0 months",
     tenureInRole: "2 years, 4 months",
     supervisor: "Michael Roberts (Manager)",
+    currentYearRating: 4.0,
+    previousYearRating: 3.6,
+    bffSummary: "Gurpreet wants to become a recognized tax specialist, eventually leading the firm's corporate tax practice and developing expertise in tax planning for owner-managed businesses.",
   },
   {
     id: "6",
@@ -102,6 +120,9 @@ export const employees: Employee[] = [
     tenure: "1 year, 5 months",
     tenureInRole: "1 year, 5 months",
     supervisor: "David Chen (Manager)",
+    currentYearRating: 3.4,
+    previousYearRating: 3.0,
+    bffSummary: "Riya sees herself growing within assurance, with a particular interest in technology audits and data analytics. She wants to bridge accounting and tech.",
   },
   {
     id: "7",
@@ -116,6 +137,9 @@ export const employees: Employee[] = [
     tenure: "10 years, 2 months",
     tenureInRole: "4 years, 7 months",
     supervisor: "Sarb Clearhouse (Partner)",
+    currentYearRating: 4.5,
+    previousYearRating: 4.3,
+    bffSummary: "Michael aims to expand the tax department's service offerings into US cross-border tax and estate planning. He envisions building a team of 10+ dedicated tax professionals.",
   },
   {
     id: "8",
@@ -130,6 +154,9 @@ export const employees: Employee[] = [
     tenure: "3 years, 0 months",
     tenureInRole: "1 year, 2 months",
     supervisor: "Michael Roberts (Manager)",
+    currentYearRating: 3.3,
+    previousYearRating: 3.1,
+    bffSummary: "Anita wants to streamline the firm's internal operations and eventually lead the operations department. She is passionate about process automation and efficiency.",
   },
   {
     id: "9",
@@ -144,6 +171,9 @@ export const employees: Employee[] = [
     tenure: "0 years, 10 months",
     tenureInRole: "0 years, 10 months",
     supervisor: "David Chen (Manager)",
+    currentYearRating: 2.9,
+    previousYearRating: 2.6,
+    bffSummary: "James is still exploring his career path but is drawn to advisory work, particularly business valuations and due diligence engagements.",
   },
   {
     id: "10",
@@ -158,6 +188,9 @@ export const employees: Employee[] = [
     tenure: "6 years, 1 month",
     tenureInRole: "2 years, 9 months",
     supervisor: "Michael Roberts (Manager)",
+    currentYearRating: 4.1,
+    previousYearRating: 3.9,
+    bffSummary: "Neha aspires to become a senior tax manager specializing in corporate restructuring and M&A tax advisory. She wants to lead cross-border engagements between Canada and India.",
   },
 ];
 
