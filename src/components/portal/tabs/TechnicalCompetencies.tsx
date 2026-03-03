@@ -1,69 +1,53 @@
-import { useEffect, useState } from "react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 
 type SkillLevel = "Beginner" | "Intermediate" | "Advanced";
 
 interface Skill {
   name: string;
   level: SkillLevel;
+  checked: boolean;
 }
 
-const levelConfig: Record<SkillLevel, { percent: number; color: string }> = {
-  Beginner: { percent: 33, color: "bg-orange-400" },
-  Intermediate: { percent: 66, color: "bg-secondary" },
-  Advanced: { percent: 100, color: "bg-primary" },
+const levelVariant: Record<SkillLevel, "default" | "secondary" | "outline"> = {
+  Advanced: "default",
+  Intermediate: "secondary",
+  Beginner: "outline",
 };
 
 const accountingSkills: Skill[] = [
-  { name: "Bookkeeping", level: "Advanced" },
-  { name: "Year-End Prep", level: "Advanced" },
-  { name: "Personal Tax", level: "Intermediate" },
-  { name: "Corporate Tax", level: "Intermediate" },
-  { name: "Compilation Support", level: "Advanced" },
+  { name: "Bookkeeping", level: "Advanced", checked: true },
+  { name: "Year-End Prep", level: "Advanced", checked: true },
+  { name: "Personal Tax", level: "Intermediate", checked: true },
+  { name: "Corporate Tax", level: "Intermediate", checked: false },
+  { name: "Compilation Support", level: "Advanced", checked: true },
 ];
 
 const softwareSkills: Skill[] = [
-  { name: "QuickBooks Online", level: "Advanced" },
-  { name: "QuickBooks Desktop", level: "Intermediate" },
-  { name: "Excel", level: "Advanced" },
+  { name: "QuickBooks Online", level: "Advanced", checked: true },
+  { name: "QuickBooks Desktop", level: "Intermediate", checked: true },
+  { name: "Excel", level: "Advanced", checked: true },
 ];
 
-const SkillBar = ({ skill, animate }: { skill: Skill; animate: boolean }) => {
-  const config = levelConfig[skill.level];
-  return (
-    <div className="flex items-center gap-4 py-2.5">
-      <span className="text-sm font-medium text-foreground w-40 flex-shrink-0">{skill.name}</span>
-      <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
-        <div
-          className={`h-full rounded-full ${config.color} transition-all duration-700 ease-out`}
-          style={{ width: animate ? `${config.percent}%` : "0%" }}
-        />
-      </div>
-      <span className="text-xs font-medium text-muted-foreground w-24 text-right">{skill.level}</span>
-    </div>
-  );
-};
+const SkillRow = ({ skill }: { skill: Skill }) => (
+  <div className="flex items-center gap-4 py-3 border-b border-border last:border-0">
+    <Checkbox checked={skill.checked} disabled className="pointer-events-none" />
+    <span className="text-sm font-medium text-foreground flex-1">{skill.name}</span>
+    <Badge variant={levelVariant[skill.level]}>{skill.level}</Badge>
+  </div>
+);
 
 const TechnicalCompetencies = () => {
-  const [animate, setAnimate] = useState(false);
-  useEffect(() => {
-    const t = setTimeout(() => setAnimate(true), 100);
-    return () => clearTimeout(t);
-  }, []);
-
   return (
     <div className="space-y-6">
       <div className="bg-card rounded-lg border border-border shadow-sm p-6">
         <h3 className="text-base font-heading font-bold text-foreground mb-4">Accounting Skills</h3>
-        <div className="divide-y divide-border">
-          {accountingSkills.map((s) => <SkillBar key={s.name} skill={s} animate={animate} />)}
-        </div>
+        {accountingSkills.map((s) => <SkillRow key={s.name} skill={s} />)}
       </div>
 
       <div className="bg-card rounded-lg border border-border shadow-sm p-6">
         <h3 className="text-base font-heading font-bold text-foreground mb-4">Software Proficiency</h3>
-        <div className="divide-y divide-border">
-          {softwareSkills.map((s) => <SkillBar key={s.name} skill={s} animate={animate} />)}
-        </div>
+        {softwareSkills.map((s) => <SkillRow key={s.name} skill={s} />)}
       </div>
     </div>
   );
