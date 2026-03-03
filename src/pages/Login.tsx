@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Lock, Mail, ShieldCheck } from "lucide-react";
+import clearhouseLogo from "@/assets/clearhouse-logo.png";
 
 const securityLevels = [
   "Level 1: Full Access (all employees)",
@@ -29,16 +30,11 @@ const Login = () => {
           className="bg-card rounded-lg shadow-2xl p-8 space-y-6"
         >
           {/* Branding */}
-          <div className="text-center space-y-1">
-            <div className="inline-block bg-navy rounded-lg px-5 py-3 mb-2">
-              <h1 className="text-xl font-heading font-extrabold tracking-[0.15em] text-white">
-                CLEARHOUSE LLP
-              </h1>
-              <p className="text-[11px] tracking-widest text-white/60 uppercase">
-                Chartered Professional Accountants
-              </p>
+          <div className="text-center space-y-3">
+            <div className="flex justify-center mb-2">
+              <img src={clearhouseLogo} alt="Clearhouse LLP" className="h-10 w-auto" />
             </div>
-            <p className="text-muted-foreground text-sm font-medium mt-3">
+            <p className="text-muted-foreground text-sm font-medium">
               Employee Portal
             </p>
           </div>
