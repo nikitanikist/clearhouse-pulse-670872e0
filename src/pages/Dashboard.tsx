@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import AppSidebar, { type NavSection } from "@/components/portal/AppSidebar";
 import DashboardHome from "@/components/portal/DashboardHome";
-import EmployeeListPanel from "@/components/portal/EmployeeListPanel";
+import EmployeeDirectory from "@/components/portal/EmployeeDirectory";
 import TeamsView from "@/components/portal/TeamsView";
 import ProfileHeader from "@/components/portal/ProfileHeader";
 import EmployeeProfile from "@/components/portal/tabs/EmployeeProfile";
@@ -12,7 +12,7 @@ import InterpersonalSkills from "@/components/portal/tabs/InterpersonalSkills";
 import GrowthPotential from "@/components/portal/tabs/GrowthPotential";
 import ManagementNotes from "@/components/portal/tabs/ManagementNotes";
 import { employees, filterBySecurityLevel, type Employee, type SecurityLevel } from "@/data/employees";
-import { Settings } from "lucide-react";
+import { Settings, ArrowLeft } from "lucide-react";
 
 const tabs = [
   "Employee Profile",
@@ -35,13 +35,25 @@ const Dashboard = () => {
   );
 
   const [section, setSection] = useState<NavSection>("dashboard");
+  const [employeeView, setEmployeeView] = useState<"list" | "detail">("list");
   const [selected, setSelected] = useState<Employee>(filteredEmployees[0]);
   const [activeTab, setActiveTab] = useState(0);
+
+  const handleSelectEmployee = (emp: Employee) => {
+    setSelected(emp);
+    setActiveTab(0);
+    setEmployeeView("detail");
+  };
+
+  const handleBackToList = () => {
+    setEmployeeView("list");
+  };
 
   const handleNavigateToEmployee = (emp: Employee) => {
     setSelected(emp);
     setActiveTab(0);
     setSection("employees");
+    setEmployeeView("detail");
   };
 
   const handleSignOut = () => navigate("/");
@@ -62,12 +74,15 @@ const Dashboard = () => {
     <div className="flex min-h-screen bg-background">
       <AppSidebar
         activeSection={section}
-        onNavigate={setSection}
+        onNavigate={(s) => {
+          setSection(s);
+          if (s === "employees") setEmployeeView("list");
+        }}
         securityLevel={securityLevel}
         onSignOut={handleSignOut}
       />
 
-      <div className="flex-1 flex min-w-0">
+      <div className="flex-1 flex flex-col min-w-0">
         {section === "dashboard" && (
           <DashboardHome
             employees={filteredEmployees}
@@ -75,33 +90,42 @@ const Dashboard = () => {
           />
         )}
 
-        {section === "employees" && (
+        {section === "employees" && employeeView === "list" && (
+          <EmployeeDirectory
+            employees={filteredEmployees}
+            onSelectEmployee={handleSelectEmployee}
+          />
+        )}
+
+        {section === "employees" && employeeView === "detail" && (
           <>
-            <EmployeeListPanel
-              employees={filteredEmployees}
-              selectedId={selected.id}
-              onSelect={setSelected}
-            />
-            <div className="flex-1 flex flex-col min-w-0">
-              <ProfileHeader employee={selected} />
-              <div className="bg-card border-b border-border px-6 flex gap-0 overflow-x-auto">
-                {tabs.map((tab, i) => (
-                  <button
-                    key={tab}
-                    onClick={() => setActiveTab(i)}
-                    className={`px-4 py-3 text-sm font-medium whitespace-nowrap transition-all duration-200 border-b-2 ${
-                      i === activeTab
-                        ? "border-b-primary text-primary"
-                        : "border-b-transparent text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    {tab}
-                  </button>
-                ))}
-              </div>
-              <div className="flex-1 p-6 overflow-y-auto">
-                {renderTab()}
-              </div>
+            <div className="bg-card border-b border-border px-6 py-3">
+              <button
+                onClick={handleBackToList}
+                className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Back to Employees
+              </button>
+            </div>
+            <ProfileHeader employee={selected} />
+            <div className="bg-card border-b border-border px-6 flex gap-0 overflow-x-auto">
+              {tabs.map((tab, i) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(i)}
+                  className={`px-4 py-3 text-sm font-medium whitespace-nowrap transition-all duration-200 border-b-2 ${
+                    i === activeTab
+                      ? "border-b-primary text-primary"
+                      : "border-b-transparent text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+            <div className="flex-1 p-6 overflow-y-auto">
+              {renderTab()}
             </div>
           </>
         )}
