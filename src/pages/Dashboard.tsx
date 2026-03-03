@@ -98,7 +98,7 @@ const Dashboard = () => {
         )}
 
         {section === "employees" && employeeView === "detail" && (
-          <>
+          <div className="flex flex-col h-full overflow-hidden">
             <div className="bg-card border-b border-border px-6 py-3">
               <button
                 onClick={handleBackToList}
@@ -127,7 +127,7 @@ const Dashboard = () => {
             <div className="flex-1 p-6 overflow-y-auto">
               {renderTab()}
             </div>
-          </>
+          </div>
         )}
 
         {section === "teams" && (
