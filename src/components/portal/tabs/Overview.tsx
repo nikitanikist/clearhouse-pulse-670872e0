@@ -20,10 +20,10 @@ const Section = ({
   children: React.ReactNode;
 }) => {
   return (
-    <div className="bg-card rounded-lg border border-border shadow-sm">
+    <div className={`bg-card rounded-lg border shadow-sm transition-all group ${isOpen ? "border-primary/40" : "border-border hover:border-primary/30"}`}>
       <button
         onClick={onToggle}
-        className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-muted/30 transition-colors"
+        className="w-full flex items-center justify-between px-6 py-4 text-left cursor-pointer hover:bg-muted/50 transition-all border-l-4 border-l-transparent group-hover:border-l-primary rounded-l-lg"
       >
         <h3 className="text-base font-heading font-bold text-foreground">{title}</h3>
         <div className="flex items-center gap-3">
@@ -31,9 +31,9 @@ const Section = ({
             <span className="text-sm text-muted-foreground truncate max-w-[240px]">{subtitle}</span>
           )}
           {isOpen ? (
-            <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+            <ChevronDown className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors shrink-0" />
           ) : (
-            <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+            <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors shrink-0" />
           )}
         </div>
       </button>
@@ -69,10 +69,6 @@ const Overview = ({ employee }: OverviewProps) => {
 
   const toggle = (key: string) => setOpenSection(prev => prev === key ? null : key);
 
-  const bffPreview = employee.bffSummary.length > 80
-    ? employee.bffSummary.slice(0, 80) + "…"
-    : employee.bffSummary;
-
   return (
     <div className="space-y-4">
       <Section
@@ -101,7 +97,6 @@ const Overview = ({ employee }: OverviewProps) => {
 
       <Section
         title="Bigger Brighter Future (BFF)"
-        subtitle={bffPreview}
         isOpen={openSection === "bff"}
         onToggle={() => toggle("bff")}
       >
