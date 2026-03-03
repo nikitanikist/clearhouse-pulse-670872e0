@@ -18,6 +18,10 @@ const initialNotes: Note[] = [
 const ManagementNotes = () => {
   const [notes, setNotes] = useState<Note[]>(initialNotes);
   const [newNote, setNewNote] = useState("");
+  const [authorFilter, setAuthorFilter] = useState("all");
+
+  const uniqueAuthors = Array.from(new Set(notes.map((n) => n.author)));
+  const filteredNotes = authorFilter === "all" ? notes : notes.filter((n) => n.author === authorFilter);
 
   const addNote = () => {
     if (!newNote.trim()) return;
@@ -48,8 +52,26 @@ const ManagementNotes = () => {
         </button>
       </div>
 
-      {/* Notes Table */}
+      {/* Filter & Notes Table */}
       <div className="bg-card rounded-lg border border-border shadow-sm overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/20">
+          <div className="flex items-center gap-3">
+            <label className="text-xs font-medium text-muted-foreground">Filter by author:</label>
+            <select
+              value={authorFilter}
+              onChange={(e) => setAuthorFilter(e.target.value)}
+              className="px-3 py-1.5 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="all">All Authors</option>
+              {uniqueAuthors.map((author) => (
+                <option key={author} value={author}>{author}</option>
+              ))}
+            </select>
+          </div>
+          <span className="text-xs text-muted-foreground">
+            Showing {filteredNotes.length} of {notes.length} notes
+          </span>
+        </div>
         <table className="w-full">
           <thead>
             <tr className="border-b border-border bg-muted/30">
@@ -59,7 +81,7 @@ const ManagementNotes = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {notes.map((note, i) => (
+            {filteredNotes.map((note, i) => (
               <tr key={i} className="hover:bg-muted/40 transition-colors">
                 <td className="px-4 py-3 text-sm text-muted-foreground align-top whitespace-nowrap">{note.date}</td>
                 <td className="px-4 py-3 text-sm text-foreground leading-relaxed">{note.text}</td>
@@ -68,7 +90,7 @@ const ManagementNotes = () => {
             ))}
           </tbody>
         </table>
-        {notes.length === 0 && (
+        {filteredNotes.length === 0 && (
           <div className="py-12 text-center">
             <p className="text-sm text-muted-foreground">No management notes yet.</p>
           </div>
