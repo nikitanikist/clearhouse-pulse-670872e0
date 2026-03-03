@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronDown, ChevronRight, Upload, Download, Trash2, Star } from "lucide-react";
+import { ChevronDown, ChevronRight, Upload, Download, Trash2, Star, Eye } from "lucide-react";
 import type { Employee } from "@/data/employees";
 
 interface OverviewProps {
@@ -159,7 +159,8 @@ const Overview = ({ employee }: OverviewProps) => {
                   <td className="py-3 text-muted-foreground">{doc.size}</td>
                   <td className="py-3">
                     <div className="flex gap-2">
-                      <button className="text-primary hover:text-primary/80 transition-colors"><Download className="h-4 w-4" /></button>
+                      <button onClick={() => window.open('#', '_blank')} className="text-primary hover:text-primary/80 transition-colors" title="View"><Eye className="h-4 w-4" /></button>
+                      <button className="text-primary hover:text-primary/80 transition-colors" title="Download"><Download className="h-4 w-4" /></button>
                       <button className="text-destructive hover:text-destructive/80 transition-colors"><Trash2 className="h-4 w-4" /></button>
                     </div>
                   </td>
