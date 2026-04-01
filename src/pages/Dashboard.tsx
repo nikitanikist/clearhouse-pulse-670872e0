@@ -14,11 +14,11 @@ import { employees, filterBySecurityLevel, type Employee, type SecurityLevel } f
 import { Settings, ArrowLeft } from "lucide-react";
 
 const tabs = [
-  "Employee Profile",
-  "Overview",
-  "Interpersonal Skills & Firm Fit",
-  "Growth & Potential",
-  "Management Notes",
+  { label: "Employee Profile", isV2: false },
+  { label: "Overview", isV2: true },
+  { label: "Interpersonal Skills & Firm Fit", isV2: true },
+  { label: "Growth & Potential", isV2: true },
+  { label: "Management Notes", isV2: false },
 ];
 
 const Dashboard = () => {
