@@ -109,15 +109,18 @@ const Dashboard = () => {
             <div className="bg-card border-b border-border px-6 flex gap-0 overflow-x-auto">
               {tabs.map((tab, i) => (
                 <button
-                  key={tab}
+                  key={tab.label}
                   onClick={() => setActiveTab(i)}
-                  className={`px-4 py-3 text-sm font-medium whitespace-nowrap transition-all duration-200 border-b-2 ${
+                  className={`px-4 py-3 text-sm font-medium whitespace-nowrap transition-all duration-200 border-b-2 flex items-center gap-1.5 ${
                     i === activeTab
                       ? "border-b-primary text-primary"
                       : "border-b-transparent text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  {tab}
+                  {tab.label}
+                  {tab.isV2 && (
+                    <span className="px-1.5 py-0.5 text-[10px] font-bold leading-none rounded bg-[#10B981] text-white uppercase">V2</span>
+                  )}
                 </button>
               ))}
             </div>
