@@ -7,7 +7,6 @@ import TeamsView from "@/components/portal/TeamsView";
 import ProfileHeader from "@/components/portal/ProfileHeader";
 import EmployeeProfile from "@/components/portal/tabs/EmployeeProfile";
 import Overview from "@/components/portal/tabs/Overview";
-import TechnicalCompetencies from "@/components/portal/tabs/TechnicalCompetencies";
 import InterpersonalSkills from "@/components/portal/tabs/InterpersonalSkills";
 import GrowthPotential from "@/components/portal/tabs/GrowthPotential";
 import ManagementNotes from "@/components/portal/tabs/ManagementNotes";
@@ -17,7 +16,6 @@ import { Settings, ArrowLeft } from "lucide-react";
 const tabs = [
   "Employee Profile",
   "Overview",
-  "Technical Competencies",
   "Interpersonal Skills & Firm Fit",
   "Growth & Potential",
   "Management Notes",
@@ -62,10 +60,9 @@ const Dashboard = () => {
     switch (activeTab) {
       case 0: return <EmployeeProfile employee={selected} />;
       case 1: return <Overview employee={selected} />;
-      case 2: return <TechnicalCompetencies />;
-      case 3: return <InterpersonalSkills />;
-      case 4: return <GrowthPotential />;
-      case 5: return <ManagementNotes />;
+      case 2: return <InterpersonalSkills />;
+      case 3: return <GrowthPotential />;
+      case 4: return <ManagementNotes />;
       default: return null;
     }
   };

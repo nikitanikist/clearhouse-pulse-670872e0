@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronDown, ChevronRight, Upload, Download, Trash2, Star, Eye } from "lucide-react";
+import { ChevronDown, ChevronRight, Upload, Download, Trash2, Eye, Info } from "lucide-react";
 import type { Employee } from "@/data/employees";
 
 interface OverviewProps {
@@ -42,26 +42,91 @@ const Section = ({
   );
 };
 
-const InfoRow = ({ label, value }: { label: string; value: string }) => (
+const TextArea = ({ label, value }: { label: string; value: string }) => (
   <div className="py-3 border-b border-border last:border-0">
-    <p className="text-xs font-medium text-muted-foreground mb-1">{label}</p>
-    <p className="text-sm text-foreground">{value}</p>
+    <p className="text-xs font-medium text-muted-foreground mb-1.5">{label}</p>
+    <p className="text-sm text-foreground leading-relaxed whitespace-pre-line">{value}</p>
   </div>
 );
 
-const RatingBadge = ({ score, max = 5 }: { score: number; max?: number }) => (
-  <div className="flex items-center gap-2">
-    <div className="flex gap-0.5">
-      {Array.from({ length: max }).map((_, i) => (
-        <Star
-          key={i}
-          className={`h-4 w-4 ${i < Math.floor(score) ? "fill-warning text-warning" : "text-border"}`}
-        />
-      ))}
-    </div>
-    <span className="text-sm font-semibold text-foreground">{score} / {max}</span>
-  </div>
-);
+type RatingCode = "E" | "G" | "M" | "NI";
+
+const ratingConfig: Record<RatingCode, { label: string; color: string; bg: string }> = {
+  E: { label: "Excellent", color: "text-white", bg: "bg-[#10B981]" },
+  G: { label: "Good", color: "text-white", bg: "bg-[#0072BC]" },
+  M: { label: "Meets", color: "text-white", bg: "bg-[#F59E0B]" },
+  NI: { label: "Needs Improvement", color: "text-white", bg: "bg-[#EF4444]" },
+};
+
+const RatingBadge = ({ code }: { code: RatingCode }) => {
+  const cfg = ratingConfig[code];
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${cfg.bg} ${cfg.color}`}>
+      {code} — {cfg.label}
+    </span>
+  );
+};
+
+interface CoreCompetency {
+  name: string;
+  rating: RatingCode;
+  commentary: string;
+}
+
+const coreCompetencies: CoreCompetency[] = [
+  {
+    name: "Thought",
+    rating: "G",
+    commentary: "Demonstrates strong analytical thinking on audit files. Proactively identifies risk areas. Could push further in developing innovative approaches to recurring engagement challenges.",
+  },
+  {
+    name: "Results",
+    rating: "E",
+    commentary: "Consistently meets and exceeds deadlines. Year-end files completed ahead of schedule. Led 3 successful client transitions with zero disruption to service delivery.",
+  },
+  {
+    name: "Expertise",
+    rating: "G",
+    commentary: "Solid technical accounting knowledge. CPA designation on track for Q3 2026. Needs deeper exposure to IFRS 16 and cross-border compliance to reach the next level.",
+  },
+  {
+    name: "People",
+    rating: "G",
+    commentary: "Effective communicator with clients and peers. Actively mentors junior associates. Working on building confidence when presenting to senior leadership during engagement reviews.",
+  },
+  {
+    name: "Self",
+    rating: "M",
+    commentary: "Maintains good work-life balance during off-peak periods. Acknowledged need to better manage stress and workload prioritization during busy season. Self-aware and open to feedback.",
+  },
+];
+
+const devPlan = [
+  {
+    objective: "Obtain CPA designation",
+    activities: "Complete PERT requirements, prepare for CFE",
+    support: "Firm-sponsored study leave (2 weeks), CPA prep course reimbursement",
+    target: "Q3 2026",
+  },
+  {
+    objective: "Deepen IFRS 16 & revenue recognition knowledge",
+    activities: "Attend IFRS Advanced Certificate program (CPA Ontario)",
+    support: "Course registration fee, 3 days off for in-person sessions",
+    target: "June 2026",
+  },
+  {
+    objective: "Develop leadership & presentation skills",
+    activities: "Enroll in Leadership Fundamentals program, present at 2 internal team sessions",
+    support: "Access to firm's leadership training budget, mentorship from a Senior Manager",
+    target: "Q4 2026",
+  },
+  {
+    objective: "Gain cross-border compliance exposure",
+    activities: "Shadow a US tax engagement, attend cross-border tax workshop",
+    support: "Assignment to a cross-border file by Manager, workshop registration",
+    target: "Q1 2027",
+  },
+];
 
 const Overview = ({ employee }: OverviewProps) => {
   const [dragOver, setDragOver] = useState(false);
@@ -71,52 +136,108 @@ const Overview = ({ employee }: OverviewProps) => {
 
   return (
     <div className="space-y-4">
+      {/* Performance */}
       <Section
         title="Performance"
-        subtitle={`★ ${employee.currentYearRating} / 5`}
+        subtitle="G — Good"
         isOpen={openSection === "performance"}
         onToggle={() => toggle("performance")}
       >
-        <div className="space-y-0">
-          <div className="py-3 border-b border-border">
-            <p className="text-xs font-medium text-muted-foreground mb-1.5">Current Year Performance Rating</p>
-            <RatingBadge score={employee.currentYearRating} />
+        <div className="space-y-6">
+          {/* Current Year Performance Rating */}
+          <div>
+            <p className="text-xs font-medium text-muted-foreground mb-2">Current Year Performance Rating</p>
+            <RatingBadge code="G" />
           </div>
-          <div className="py-3 border-b border-border">
-            <p className="text-xs font-medium text-muted-foreground mb-1.5">Previous Year Performance Rating</p>
-            <RatingBadge score={employee.previousYearRating} />
+
+          <TextArea
+            label="What Has Gone Well"
+            value="Priya consistently delivered high-quality work papers across 12 audit engagements this year. She took full ownership of the Meridian Group file and received positive client feedback. She also mentored two junior associates and led the transition of three clients to cloud-based bookkeeping. Her attention to detail and ability to manage timelines independently were standout strengths this review period."
+          />
+
+          <TextArea
+            label="What Could Have Gone Better"
+            value="Priya acknowledged that she could have been more proactive in raising concerns on the TechNova engagement earlier in the process. She also identified that her time management during peak season could improve — specifically around balancing multiple concurrent files without letting quality slip on lower-priority engagements."
+          />
+
+          <TextArea
+            label="Summary of Overall Performance"
+            value="Overall, Priya met and frequently exceeded the expectations of her role. She is a reliable, detail-oriented team member who consistently produces work that requires minimal review. Her growth over the past 12 months has been notable, particularly in her ability to manage client relationships and work independently."
+          />
+
+          {/* Core Competency Ratings */}
+          <div>
+            <p className="text-xs font-medium text-muted-foreground mb-3">Core Competency Ratings</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {coreCompetencies.map((comp) => (
+                <div key={comp.name} className="bg-muted/30 rounded-lg border border-border p-4">
+                  <h4 className="text-sm font-heading font-bold text-foreground mb-2">{comp.name}</h4>
+                  <RatingBadge code={comp.rating} />
+                  <p className="text-sm text-muted-foreground leading-relaxed mt-3">{comp.commentary}</p>
+                </div>
+              ))}
+            </div>
           </div>
-          <InfoRow label="Quality of Work" value="Consistently delivers accurate, well-documented work papers. Minimal review notes required." />
-          <InfoRow label="Client Service Strengths" value="Excellent responsiveness to client inquiries. Builds strong rapport with mid-market clients." />
-          <InfoRow label="Efficiency / Turnaround Times" value="Meets deadlines consistently. Year-end files completed ahead of schedule in 2025." />
-          <InfoRow label="Reliability / Independence" value="Can manage engagement sections independently. Requires minimal supervision on recurring files." />
-          <InfoRow label="Notable Contributions" value="Led the transition of 3 key clients to cloud-based bookkeeping. Mentored 2 junior associates." />
-          <InfoRow label="Unique Strengths" value="Bilingual (English/Hindi). Strong Excel modeling skills. Very detail-oriented." />
         </div>
       </Section>
 
+      {/* My Bigger, Brighter Future */}
       <Section
-        title="Bigger Brighter Future (BFF)"
+        title="My Bigger, Brighter Future"
         isOpen={openSection === "bff"}
         onToggle={() => toggle("bff")}
       >
-        <InfoRow label="BFF Summary" value={employee.bffSummary} />
+        <TextArea label="BFF Summary" value={employee.bffSummary} />
       </Section>
 
+      {/* Career Aspirations & Development Plan */}
       <Section
-        title="Career Aspirations"
+        title="Career Aspirations & Development Plan"
         subtitle="CPA by Q3 2026"
         isOpen={openSection === "career"}
         onToggle={() => toggle("career")}
       >
-        <InfoRow label="Short Term" value="Obtain CPA designation (expected completion: Q3 2026). Take on 2 additional complex audit engagements." />
-        <InfoRow label="Long Term" value="Become a Manager within 2-3 years. Eventually transition into an advisory-focused Partner track." />
-        <InfoRow label="Development Needs & Plans" value="Needs deeper exposure to IFRS 16 and revenue recognition standards. Scheduled for firm-sponsored training in June 2026." />
-        <InfoRow label="Technical Gaps" value="Limited experience with US GAAP and cross-border compliance engagements." />
-        <InfoRow label="Interpersonal Skill Development" value="Working on presenting findings more confidently to senior management during engagement reviews." />
-        <InfoRow label="Training Recommendations" value="IFRS Advanced Certificate (CPA Ontario), Public speaking workshop, Leadership fundamentals program." />
+        <div className="space-y-6">
+          <TextArea
+            label="Career Aspirations Summary"
+            value="Priya's career vision is to grow into a managerial role within the Assurance practice within 2-3 years, eventually leading a team of 5-8 associates. She is interested in gaining sideways exposure to IFRS advisory work before moving upward. Long-term, she is considering a Partner track focused on mid-market audit and advisory clients."
+          />
+
+          <TextArea
+            label="Professional Development Plan Summary"
+            value="Priya has made solid progress against her development goals from the last review cycle. She completed two of three planned training modules (Advanced Excel Modeling and Client Relationship Management). The IFRS Advanced Certificate is scheduled for June 2026. Her focus for the next 12 months is on deepening technical expertise and building leadership skills."
+          />
+
+          {/* Development Plan Table */}
+          <div>
+            <p className="text-xs font-medium text-muted-foreground mb-3">Professional Development Plan</p>
+            <div className="overflow-x-auto rounded-lg border border-border">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-primary text-primary-foreground">
+                    <th className="px-4 py-3 text-left text-xs font-semibold">Development Objectives</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold">Activities to Undertake</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold">Support & Resources Needed</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold">Target Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {devPlan.map((row, i) => (
+                    <tr key={i} className="border-b border-border last:border-0 bg-card">
+                      <td className="px-4 py-3 font-medium text-foreground">{row.objective}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{row.activities}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{row.support}</td>
+                      <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{row.target}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       </Section>
 
+      {/* PDRs */}
       <Section
         title="PDRs (Performance Development Reviews)"
         subtitle="3 documents"

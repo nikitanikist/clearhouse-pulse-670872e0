@@ -1,3 +1,5 @@
+import { Info } from "lucide-react";
+
 const skills = [
   { name: "Client Communication", text: "Priya communicates clearly and professionally with clients. She is known for translating complex accounting concepts into understandable language for business owners." },
   { name: "Team Collaboration", text: "Actively supports team members during busy season. Frequently volunteers to help peers with overflow work." },
@@ -11,13 +13,23 @@ const skills = [
 ];
 
 const InterpersonalSkills = () => (
-  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-    {skills.map((s) => (
-      <div key={s.name} className="bg-card rounded-lg border border-border shadow-sm p-5">
-        <h4 className="text-sm font-heading font-bold text-foreground mb-2">{s.name}</h4>
-        <p className="text-sm text-muted-foreground leading-relaxed">{s.text}</p>
-      </div>
-    ))}
+  <div className="space-y-4">
+    {/* Info Banner */}
+    <div className="flex items-start gap-3 rounded-lg bg-[#EFF6FF] px-4 py-3">
+      <Info className="h-4 w-4 text-[#0072BC] mt-0.5 shrink-0" />
+      <p className="text-sm text-[#0072BC]/80">
+        This section is entered manually by the manager based on their direct observations and feedback.
+      </p>
+    </div>
+
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {skills.map((s) => (
+        <div key={s.name} className="bg-card rounded-lg border border-border shadow-sm p-5">
+          <h4 className="text-sm font-heading font-bold text-foreground mb-2">{s.name}</h4>
+          <p className="text-sm text-muted-foreground leading-relaxed">{s.text}</p>
+        </div>
+      ))}
+    </div>
   </div>
 );
 
