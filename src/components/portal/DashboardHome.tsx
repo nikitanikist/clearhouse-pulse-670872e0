@@ -18,7 +18,7 @@ const DashboardHome = ({ employees, onNavigateToEmployee }: DashboardHomeProps) 
     : "—";
 
   const topPerformers = [...employees].sort((a, b) => b.currentYearRating - a.currentYearRating).slice(0, 5);
-  const highPotential = employees.filter((e) => e.potential === "High");
+  const highPotential = employees.filter((e) => ["Well Placed","Ready Now"].includes(e.potential));
 
   return (
     <div className="p-6 space-y-6 max-w-6xl">

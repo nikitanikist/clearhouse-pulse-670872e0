@@ -12,7 +12,7 @@ interface EmployeeDirectoryProps {
 const departments: Department[] = ["Assurance", "Tax", "Advisory", "Operations"];
 const locations: Location[] = ["Canada", "India"];
 const positions: Position[] = ["Partner", "Manager", "Senior Associate", "Intermediate", "Associate", "Operations"];
-const potentials: PotentialRating[] = ["High", "Medium", "Developing"];
+const potentials: PotentialRating[] = ["Well Placed", "Ready Now", "Ready Soon", "Ready Later"];
 
 const EmployeeDirectory = ({ employees, onSelectEmployee }: EmployeeDirectoryProps) => {
   const [search, setSearch] = useState("");

@@ -10,7 +10,7 @@ interface SidebarProps {
 const departments: Department[] = ["Assurance", "Tax", "Advisory", "Operations"];
 const locations: Location[] = ["Canada", "India"];
 const positions: Position[] = ["Partner", "Manager", "Senior Associate", "Intermediate", "Associate", "Operations"];
-const potentials: PotentialRating[] = ["High", "Medium", "Developing"];
+const potentials: PotentialRating[] = ["Well Placed", "Ready Now", "Ready Soon", "Ready Later"];
 
 const Sidebar = ({ selectedId, onSelect }: SidebarProps) => {
   const [search, setSearch] = useState("");
