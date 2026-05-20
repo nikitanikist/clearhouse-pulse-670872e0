@@ -36,11 +36,11 @@ const ManagementNotes = ({ employeeId, authorName }: ManagementNotesProps) => {
   const addNote = async () => {
     if (!newNote.trim()) return;
     setSaving(true);
-    const { error } = await supabase.from("management_notes").insert({
+    const { error } = await supabase.from("management_notes").insert([{
       employee_id: employeeId,
       comment_text: newNote.trim(),
       comment_by: authorName,
-    });
+    }] as never);
     setSaving(false);
     if (error) {
       toast.error(error.message);
