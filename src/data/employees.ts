@@ -1,4 +1,4 @@
-export type PotentialRating = "High" | "Medium" | "Developing";
+export type PotentialRating = "Well Placed" | "Ready Now" | "Ready Soon" | "Ready Later";
 export type Department = "Assurance" | "Tax" | "Advisory" | "Operations";
 export type Location = "Canada" | "India";
 export type Position = "Partner" | "Manager" | "Senior Associate" | "Intermediate" | "Associate" | "Operations";
@@ -29,7 +29,7 @@ export const employees: Employee[] = [
     position: "Senior Associate",
     department: "Assurance",
     location: "Canada",
-    potential: "High",
+    potential: "Ready Now",
     email: "priya.sharma@clearhouse.ca",
     phone: "(647) 555-0192",
     tenure: "4 years, 3 months",
@@ -46,7 +46,7 @@ export const employees: Employee[] = [
     position: "Associate",
     department: "Tax",
     location: "India",
-    potential: "Medium",
+    potential: "Ready Soon",
     email: "arun.patel@clearhouse.ca",
     phone: "+91 98765 43210",
     tenure: "2 years, 1 month",
@@ -63,7 +63,7 @@ export const employees: Employee[] = [
     position: "Manager",
     department: "Assurance",
     location: "Canada",
-    potential: "High",
+    potential: "Well Placed",
     email: "david.chen@clearhouse.ca",
     phone: "(905) 555-0147",
     tenure: "8 years, 6 months",
@@ -80,7 +80,7 @@ export const employees: Employee[] = [
     position: "Intermediate",
     department: "Advisory",
     location: "Canada",
-    potential: "Developing",
+    potential: "Ready Later",
     email: "emily.tremblay@clearhouse.ca",
     phone: "(416) 555-0283",
     tenure: "1 year, 9 months",
@@ -97,7 +97,7 @@ export const employees: Employee[] = [
     position: "Senior Associate",
     department: "Tax",
     location: "Canada",
-    potential: "High",
+    potential: "Ready Now",
     email: "gurpreet.dhillon@clearhouse.ca",
     phone: "(647) 555-0371",
     tenure: "5 years, 0 months",
@@ -114,7 +114,7 @@ export const employees: Employee[] = [
     position: "Associate",
     department: "Assurance",
     location: "India",
-    potential: "Medium",
+    potential: "Ready Soon",
     email: "riya.kapoor@clearhouse.ca",
     phone: "+91 99887 76655",
     tenure: "1 year, 5 months",
@@ -131,7 +131,7 @@ export const employees: Employee[] = [
     position: "Manager",
     department: "Tax",
     location: "Canada",
-    potential: "High",
+    potential: "Well Placed",
     email: "michael.roberts@clearhouse.ca",
     phone: "(905) 555-0492",
     tenure: "10 years, 2 months",
@@ -148,7 +148,7 @@ export const employees: Employee[] = [
     position: "Intermediate",
     department: "Operations",
     location: "India",
-    potential: "Medium",
+    potential: "Ready Soon",
     email: "anita.desai@clearhouse.ca",
     phone: "+91 98765 11223",
     tenure: "3 years, 0 months",
@@ -165,7 +165,7 @@ export const employees: Employee[] = [
     position: "Associate",
     department: "Advisory",
     location: "Canada",
-    potential: "Developing",
+    potential: "Ready Later",
     email: "james.wilson@clearhouse.ca",
     phone: "(416) 555-0518",
     tenure: "0 years, 10 months",
@@ -182,7 +182,7 @@ export const employees: Employee[] = [
     position: "Senior Associate",
     department: "Tax",
     location: "India",
-    potential: "High",
+    potential: "Ready Now",
     email: "neha.malhotra@clearhouse.ca",
     phone: "+91 99001 22334",
     tenure: "6 years, 1 month",
@@ -202,9 +202,10 @@ export const departmentColors: Record<Department, string> = {
 };
 
 export const potentialColors: Record<PotentialRating, string> = {
-  High: "bg-success",
-  Medium: "bg-warning",
-  Developing: "bg-orange-400",
+  "Well Placed": "bg-primary",
+  "Ready Now": "bg-success",
+  "Ready Soon": "bg-warning",
+  "Ready Later": "bg-muted-foreground",
 };
 
 export type SecurityLevel = 1 | 2 | 3 | 4 | 5;
