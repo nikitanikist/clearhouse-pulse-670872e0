@@ -7,7 +7,7 @@ import type {
   InterpersonalRow,
   ManagementNoteRow,
   PdrDocumentRow,
-} from "@/integrations/supabase/types";
+} from "@/types/database";
 import type { Employee } from "@/data/employees";
 
 const initialsFromName = (name: string) =>
