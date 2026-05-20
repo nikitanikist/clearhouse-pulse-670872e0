@@ -1,4 +1,4 @@
-export type PotentialRating = "High" | "Medium" | "Developing";
+export type PotentialRating = "Well Placed" | "Ready Now" | "Ready Soon" | "Ready Later";
 export type Department = "Assurance" | "Tax" | "Advisory" | "Operations";
 export type Location = "Canada" | "India";
 export type Position = "Partner" | "Manager" | "Senior Associate" | "Intermediate" | "Associate" | "Operations";
@@ -202,9 +202,10 @@ export const departmentColors: Record<Department, string> = {
 };
 
 export const potentialColors: Record<PotentialRating, string> = {
-  High: "bg-success",
-  Medium: "bg-warning",
-  Developing: "bg-orange-400",
+  "Well Placed": "bg-primary",
+  "Ready Now": "bg-success",
+  "Ready Soon": "bg-warning",
+  "Ready Later": "bg-muted-foreground",
 };
 
 export type SecurityLevel = 1 | 2 | 3 | 4 | 5;
