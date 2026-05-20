@@ -15,6 +15,7 @@ interface AppSidebarProps {
   activeSection: NavSection;
   onNavigate: (section: NavSection) => void;
   securityLevel: SecurityLevel;
+  userEmail?: string;
   onSignOut: () => void;
 }
 
@@ -25,7 +26,7 @@ const navItems: { id: NavSection; label: string; icon: React.ElementType }[] = [
   { id: "settings", label: "Settings", icon: Settings },
 ];
 
-const AppSidebar = ({ activeSection, onNavigate, securityLevel, onSignOut }: AppSidebarProps) => {
+const AppSidebar = ({ activeSection, onNavigate, securityLevel, userEmail, onSignOut }: AppSidebarProps) => {
   return (
     <aside className="w-[220px] min-w-[220px] bg-sidebar flex flex-col h-screen sticky top-0">
       {/* Logo */}
@@ -59,7 +60,7 @@ const AppSidebar = ({ activeSection, onNavigate, securityLevel, onSignOut }: App
       {/* Footer */}
       <div className="px-4 py-4 border-t border-sidebar-border">
         <p className="text-xs text-sidebar-foreground/50 mb-1">Logged in as</p>
-        <p className="text-sm font-medium text-sidebar-foreground truncate">sarb@clearhouse.ca</p>
+        <p className="text-sm font-medium text-sidebar-foreground truncate">{userEmail ?? "—"}</p>
         <p className="text-[10px] text-sidebar-foreground/40 mt-0.5">{securityLabels[securityLevel]}</p>
         <button
           onClick={onSignOut}
