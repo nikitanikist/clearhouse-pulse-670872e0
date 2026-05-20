@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Search, Filter, ChevronDown, Star } from "lucide-react";
+import { Search, Filter } from "lucide-react";
 import { departmentColors, potentialColors, type Employee, type Department, type Location, type Position, type PotentialRating } from "@/data/employees";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,28 @@ const locations: Location[] = ["Canada", "India"];
 const positions: Position[] = ["Partner", "Manager", "Senior Associate", "Intermediate", "Associate", "Operations"];
 const potentials: PotentialRating[] = ["Well Placed", "Ready Now", "Ready Soon", "Ready Later"];
 
+type RatingCode = "E" | "G" | "M" | "NI";
+
+const deriveRating = (score: number): RatingCode => {
+  if (score >= 4.5) return "E";
+  if (score >= 3.5) return "G";
+  if (score >= 2.5) return "M";
+  return "NI";
+};
+
+const ratingStyles: Record<RatingCode, { bg: string; label: string }> = {
+  E: { bg: "bg-success text-success-foreground", label: "E" },
+  G: { bg: "bg-primary text-primary-foreground", label: "G" },
+  M: { bg: "bg-warning text-warning-foreground", label: "M" },
+  NI: { bg: "bg-destructive text-destructive-foreground", label: "NI" },
+};
+
+const RatingBadge = ({ code }: { code: RatingCode }) => (
+  <span className={`inline-flex items-center justify-center min-w-7 h-6 px-2 rounded text-xs font-bold ${ratingStyles[code].bg}`}>
+    {ratingStyles[code].label}
+  </span>
+);
+
 const EmployeeDirectory = ({ employees, onSelectEmployee }: EmployeeDirectoryProps) => {
   const [search, setSearch] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -22,6 +44,12 @@ const EmployeeDirectory = ({ employees, onSelectEmployee }: EmployeeDirectoryPro
   const [posFilter, setPosFilter] = useState<string>("");
   const [potFilter, setPotFilter] = useState<string>("");
   const [ratingFilter, setRatingFilter] = useState<string>("");
+  const [supervisorFilter, setSupervisorFilter] = useState<string>("");
+
+  const supervisors = useMemo(
+    () => Array.from(new Set(employees.map((e) => e.supervisor))).sort(),
+    [employees]
+  );
 
   const filtered = useMemo(() => {
     return employees.filter((e) => {
@@ -35,14 +63,11 @@ const EmployeeDirectory = ({ employees, onSelectEmployee }: EmployeeDirectoryPro
       const matchesLoc = !locFilter || e.location === locFilter;
       const matchesPos = !posFilter || e.position === posFilter;
       const matchesPot = !potFilter || e.potential === potFilter;
-      const matchesRating = !ratingFilter || (
-        ratingFilter === "4.0+" ? e.currentYearRating >= 4.0 :
-        ratingFilter === "3.0–3.9" ? (e.currentYearRating >= 3.0 && e.currentYearRating < 4.0) :
-        e.currentYearRating < 3.0
-      );
-      return matchesSearch && matchesDept && matchesLoc && matchesPos && matchesPot && matchesRating;
+      const matchesRating = !ratingFilter || deriveRating(e.currentYearRating) === ratingFilter;
+      const matchesSupervisor = !supervisorFilter || e.supervisor === supervisorFilter;
+      return matchesSearch && matchesDept && matchesLoc && matchesPos && matchesPot && matchesRating && matchesSupervisor;
     });
-  }, [employees, search, deptFilter, locFilter, posFilter, potFilter, ratingFilter]);
+  }, [employees, search, deptFilter, locFilter, posFilter, potFilter, ratingFilter, supervisorFilter]);
 
   const clearFilters = () => {
     setDeptFilter("");
@@ -50,9 +75,11 @@ const EmployeeDirectory = ({ employees, onSelectEmployee }: EmployeeDirectoryPro
     setPosFilter("");
     setPotFilter("");
     setRatingFilter("");
+    setSupervisorFilter("");
   };
 
-  const hasActiveFilters = deptFilter || locFilter || posFilter || potFilter || ratingFilter;
+  const activeFilters = [deptFilter, locFilter, posFilter, potFilter, ratingFilter, supervisorFilter].filter(Boolean);
+  const hasActiveFilters = activeFilters.length > 0;
 
   return (
     <div className="flex-1 p-6 overflow-y-auto">
@@ -90,7 +117,7 @@ const EmployeeDirectory = ({ employees, onSelectEmployee }: EmployeeDirectoryPro
           Filters
           {hasActiveFilters && (
             <span className="ml-1 w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center">
-              {[deptFilter, locFilter, posFilter, potFilter, ratingFilter].filter(Boolean).length}
+              {activeFilters.length}
             </span>
           )}
         </button>
@@ -100,10 +127,11 @@ const EmployeeDirectory = ({ employees, onSelectEmployee }: EmployeeDirectoryPro
       {filtersOpen && (
         <div className="flex flex-wrap items-center gap-3 mb-4 p-4 bg-muted/50 rounded-lg border border-border">
           {[
-            { label: "Department", value: deptFilter, setter: setDeptFilter, options: departments },
-            { label: "Location", value: locFilter, setter: setLocFilter, options: locations },
-            { label: "Position", value: posFilter, setter: setPosFilter, options: positions },
-            { label: "Potential", value: potFilter, setter: setPotFilter, options: potentials },
+            { label: "Department", value: deptFilter, setter: setDeptFilter, options: departments as readonly string[] },
+            { label: "Location", value: locFilter, setter: setLocFilter, options: locations as readonly string[] },
+            { label: "Position", value: posFilter, setter: setPosFilter, options: positions as readonly string[] },
+            { label: "Potential", value: potFilter, setter: setPotFilter, options: potentials as readonly string[] },
+            { label: "Supervisor", value: supervisorFilter, setter: setSupervisorFilter, options: supervisors },
           ].map((f) => (
             <select
               key={f.label}
@@ -123,9 +151,10 @@ const EmployeeDirectory = ({ employees, onSelectEmployee }: EmployeeDirectoryPro
             className="py-2 px-3 rounded-md bg-background text-foreground text-sm border border-border focus:outline-none focus:ring-2 focus:ring-ring"
           >
             <option value="">Current Rating: All</option>
-            <option value="4.0+">4.0+</option>
-            <option value="3.0–3.9">3.0 – 3.9</option>
-            <option value="Below 3.0">Below 3.0</option>
+            <option value="E">E — Excellent</option>
+            <option value="G">G — Good</option>
+            <option value="M">M — Meets</option>
+            <option value="NI">NI — Needs Improvement</option>
           </select>
           {hasActiveFilters && (
             <button
@@ -177,10 +206,7 @@ const EmployeeDirectory = ({ employees, onSelectEmployee }: EmployeeDirectoryPro
                 </td>
                 <td className="px-4 py-3 text-sm text-muted-foreground">{emp.location}</td>
                 <td className="px-4 py-3">
-                  <div className="flex items-center gap-1.5">
-                    <Star className="h-3.5 w-3.5 text-warning fill-warning" />
-                    <span className="text-sm font-medium text-foreground">{emp.currentYearRating.toFixed(1)}</span>
-                  </div>
+                  <RatingBadge code={deriveRating(emp.currentYearRating)} />
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
