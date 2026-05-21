@@ -93,39 +93,86 @@ function parseCompetency(rows: string[][], name: CompetencyName): ParsedCompeten
       break;
     }
   }
-  // Row 4 = Reviewer commentary (single cell spanning, take all cell text joined)
+  // Row 4 = Reviewer commentary. Strip the leading "Reviewer Commentary:" label.
   const commentaryRow = rows[4] ?? [];
-  const commentary = commentaryRow.filter((c) => c && c.trim()).join("\n").trim();
+  const commentary = commentaryRow
+    .filter((c) => c && c.trim())
+    .join("\n")
+    .trim()
+    .replace(/^reviewer\s+commentary\s*:?\s*/i, "")
+    .trim();
   return { competency_name: name, rating_code, commentary };
 }
 
-function findLabeledText(paragraphs: string[], labels: RegExp): string {
-  // Find paragraph matching label, return concatenation of subsequent paragraphs until
-  // a paragraph that looks like another section header (short, ends with ':' or all caps).
-  for (let i = 0; i < paragraphs.length; i++) {
-    if (labels.test(paragraphs[i])) {
-      const collected: string[] = [];
-      // If the matched paragraph has text after the label, capture it
-      const after = paragraphs[i].replace(labels, "").replace(/^[:\-\s]+/, "").trim();
-      if (after) collected.push(after);
-      for (let j = i + 1; j < paragraphs.length; j++) {
-        const p = paragraphs[j].trim();
-        if (!p) continue;
-        if (isLikelyHeader(p) && collected.length > 0) break;
-        collected.push(p);
-        if (collected.join(" ").length > 4000) break;
-      }
-      return collected.join("\n").trim();
-    }
-  }
-  return "";
+// Strict heading patterns — anchored to the start of a paragraph so guidance prose
+// (e.g. "This section is an opportunity to explore overall performance...") is NOT
+// treated as a heading.
+const KNOWN_HEADING_PATTERNS: RegExp[] = [
+  /^summary\s+of\s+overall\s+performance/i,
+  /^overall\s+performance\s+summary/i,
+  /^performance\s+summary/i,
+  /^career\s+aspirations?/i,
+  /^what\s+(has\s+)?gone\s+well/i,
+  /^what\s+went\s+well/i,
+  /^what\s+could\s+(have\s+)?gone?\s+better/i,
+  /^what\s+could\s+go\s+better/i,
+  /^(my\s+)?bigger,?\s*brighter\s*future/i,
+  /^development\s+objectives?/i,
+  /^professional\s+development/i,
+  /^core\s+competenc(y|ies)/i,
+  /^section\s+(one|two|three|four|five|1|2|3|4|5)\b/i,
+  /^part\s+(one|two|three|1|2|3)\b/i,
+  /^overall\s+rating/i,
+  /^reviewer\s+commentary/i,
+  /^reviewee\s+commentary/i,
+];
+
+// Template guidance prose — skipped when collecting the typed answer.
+const GUIDANCE_PATTERNS: RegExp[] = [
+  /^this\s+section\s+is\b/i,
+  /^this\s+is\s+an\s+opportunity/i,
+  /opportunity\s+to\s+(explore|discuss|reflect|consider)/i,
+  /^please\s+(use|provide|reflect|consider|describe|note)/i,
+  /^in\s+this\s+section/i,
+  /^use\s+this\s+(section|space)/i,
+];
+
+function isKnownHeading(p: string): boolean {
+  const t = p.trim();
+  if (!t) return false;
+  if (t.length > 120) return false;
+  return KNOWN_HEADING_PATTERNS.some((r) => r.test(t));
 }
 
-function isLikelyHeader(p: string): boolean {
-  if (p.length > 120) return false;
-  if (/[:?]$/.test(p)) return true;
-  // Common section labels
-  return /^(performance|bigger|brighter|what (has|could)|career|professional development|development objectives|core competencies|overall rating)/i.test(p);
+function isGuidance(p: string): boolean {
+  const t = p.trim();
+  if (!t) return false;
+  return GUIDANCE_PATTERNS.some((r) => r.test(t));
+}
+
+// Find a heading paragraph (strict match), then collect the answer that follows,
+// skipping template guidance and stopping at the next known heading.
+// If nothing usable is captured, return "" so the manager fills it in the modal.
+function findAnswerAfterHeading(paragraphs: string[], headingRe: RegExp): string {
+  for (let i = 0; i < paragraphs.length; i++) {
+    const t = paragraphs[i].trim();
+    if (!headingRe.test(t)) continue;
+    if (!isKnownHeading(t)) continue; // must look like an actual heading
+    const collected: string[] = [];
+    const after = t.replace(headingRe, "").replace(/^[:\-\s]+/, "").trim();
+    if (after && !isGuidance(after) && !isKnownHeading(after)) collected.push(after);
+    for (let j = i + 1; j < paragraphs.length; j++) {
+      const q = paragraphs[j].trim();
+      if (!q) continue;
+      if (isKnownHeading(q)) break;
+      if (isGuidance(q)) continue;
+      collected.push(q);
+      if (collected.join(" ").length > 4000) break;
+    }
+    const result = collected.join("\n").trim();
+    if (result) return result;
+  }
+  return "";
 }
 
 function parseDevPlan(tables: string[][][]): ParsedDevPlanRow[] {
