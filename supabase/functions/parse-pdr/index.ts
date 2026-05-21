@@ -271,11 +271,11 @@ function parseDocument(xml: string): ParsedPdr {
   for (const rows of tables) for (const r of rows) for (const c of r) if (c.trim()) cellTexts.push(c.trim());
   const searchPool = [...paragraphs, ...cellTexts];
 
-  const bff_summary = findLabeledText(searchPool, /bigger,?\s*brighter\s*future|^\s*bff/i);
-  const performance_what_went_well = findLabeledText(searchPool, /what\s+(has\s+)?gone\s+well|what\s+went\s+well/i);
-  const performance_what_could_go_better = findLabeledText(searchPool, /what\s+could\s+(have\s+)?gone?\s+better|what\s+could\s+go\s+better/i);
-  const performance_summary = findLabeledText(searchPool, /(summary\s+of\s+)?overall\s+performance|performance\s+summary/i);
-  const career_aspirations_summary = findLabeledText(searchPool, /career\s+aspirations?/i);
+  const bff_summary = findAnswerAfterHeading(searchPool, /^(my\s+)?bigger,?\s*brighter\s*future/i);
+  const performance_what_went_well = findAnswerAfterHeading(searchPool, /^what\s+(has\s+)?gone\s+well|^what\s+went\s+well/i);
+  const performance_what_could_go_better = findAnswerAfterHeading(searchPool, /^what\s+could\s+(have\s+)?gone?\s+better|^what\s+could\s+go\s+better/i);
+  const performance_summary = findAnswerAfterHeading(searchPool, /^summary\s+of\s+overall\s+performance|^overall\s+performance\s+summary|^performance\s+summary/i);
+  const career_aspirations_summary = findAnswerAfterHeading(searchPool, /^career\s+aspirations?/i);
 
   const dev_plan = parseDevPlan(tables);
   if (!dev_plan.length) warnings.push("No development plan rows detected");
