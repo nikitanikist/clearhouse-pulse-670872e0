@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronDown, ChevronRight, Upload, Download, Trash2, Eye, Loader2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Download, Trash2, Eye, Loader2 } from "lucide-react";
 import type { Employee } from "@/data/employees";
 import {
   useEmployeeRow,
@@ -8,6 +8,9 @@ import {
   usePdrDocuments,
 } from "@/hooks/useEmployees";
 import type { CompetencyRating } from "@/types/database";
+import PdrUploader from "@/components/portal/pdr/PdrUploader";
+import PdrReviewDialog from "@/components/portal/pdr/PdrReviewDialog";
+import type { ParsedPdr } from "@/lib/pdr/types";
 
 interface OverviewProps {
   employee: Employee;
@@ -80,8 +83,8 @@ const formatDate = (iso: string) =>
   new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
 const Overview = ({ employee }: OverviewProps) => {
-  const [dragOver, setDragOver] = useState(false);
   const [openSection, setOpenSection] = useState<string | null>(null);
+  const [parsed, setParsed] = useState<ParsedPdr | null>(null);
 
   const { data: row, isLoading: loadingRow } = useEmployeeRow(employee.id);
   const { data: competencies = [] } = useEmployeeCoreCompetencies(employee.id);
@@ -192,21 +195,7 @@ const Overview = ({ employee }: OverviewProps) => {
         isOpen={openSection === "pdrs"}
         onToggle={() => toggle("pdrs")}
       >
-        <div
-          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={(e) => { e.preventDefault(); setDragOver(false); }}
-          className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-            dragOver ? "border-primary bg-primary/5" : "border-border"
-          }`}
-        >
-          <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-          <p className="text-sm text-muted-foreground">
-            Drag & drop PDR documents here, or{" "}
-            <span className="text-primary cursor-pointer font-medium">click to browse</span>
-          </p>
-          <p className="text-xs text-muted-foreground/70 mt-2">(Upload wiring lands in the next phase.)</p>
-        </div>
+        <PdrUploader employeeId={employee.id} onParsed={setParsed} />
 
         <div className="mt-4 overflow-x-auto">
           <table className="w-full text-sm">
@@ -244,6 +233,8 @@ const Overview = ({ employee }: OverviewProps) => {
           </table>
         </div>
       </Section>
+
+      <PdrReviewDialog employeeId={employee.id} parsed={parsed} onClose={() => setParsed(null)} />
     </div>
   );
 };
