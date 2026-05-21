@@ -15,7 +15,7 @@ export async function applyParsedPdr(employeeId: string, parsed: ParsedPdr): Pro
   if (parsed.current_year_rating_code) {
     employeeUpdate.current_year_rating_code = parsed.current_year_rating_code;
   }
-  const { error: empErr } = await supabase.from("employees").update(employeeUpdate).eq("id", employeeId);
+  const { error: empErr } = await supabase.from("employees").update(employeeUpdate as never).eq("id", employeeId);
   if (empErr) throw empErr;
 
   const compRows: Partial<CoreCompetencyRow>[] = parsed.competencies
@@ -29,7 +29,7 @@ export async function applyParsedPdr(employeeId: string, parsed: ParsedPdr): Pro
   if (compRows.length) {
     const { error: compErr } = await supabase
       .from("employee_core_competencies")
-      .upsert(compRows, { onConflict: "employee_id,competency_name" });
+      .upsert(compRows as never, { onConflict: "employee_id,competency_name" });
     if (compErr) throw compErr;
   }
 
@@ -44,7 +44,7 @@ export async function applyParsedPdr(employeeId: string, parsed: ParsedPdr): Pro
       target_date: r.target_date,
       sort_order: i,
     }));
-    const { error: insErr } = await supabase.from("employee_dev_plan_rows").insert(devRows);
+    const { error: insErr } = await supabase.from("employee_dev_plan_rows").insert(devRows as never);
     if (insErr) throw insErr;
   }
 }
