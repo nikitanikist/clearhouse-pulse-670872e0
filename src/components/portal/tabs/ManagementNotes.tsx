@@ -29,6 +29,39 @@ const ManagementNotes = ({ employeeId, authorName }: ManagementNotesProps) => {
   const [newNote, setNewNote] = useState("");
   const [authorFilter, setAuthorFilter] = useState("all");
   const [saving, setSaving] = useState(false);
+  const [editNote, setEditNote] = useState<{ id: string; text: string } | null>(null);
+  const [editSaving, setEditSaving] = useState(false);
+
+  const invalidate = () =>
+    queryClient.invalidateQueries({ queryKey: ["employee", employeeId, "notes"] });
+
+  const saveEdit = async () => {
+    if (!editNote || !editNote.text.trim()) return;
+    setEditSaving(true);
+    const { error } = await supabase
+      .from("management_notes")
+      .update({ comment_text: editNote.text.trim() } as never)
+      .eq("id", editNote.id);
+    setEditSaving(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Note updated");
+    setEditNote(null);
+    invalidate();
+  };
+
+  const deleteNote = async (id: string) => {
+    if (!confirm("Delete this note? This cannot be undone.")) return;
+    const { error } = await supabase.from("management_notes").delete().eq("id", id);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Note deleted");
+    invalidate();
+  };
 
   const uniqueAuthors = Array.from(new Set(notes.map((n) => n.comment_by)));
   const filteredNotes =
