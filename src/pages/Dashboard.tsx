@@ -11,9 +11,11 @@ import InterpersonalSkills from "@/components/portal/tabs/InterpersonalSkills";
 import GrowthPotential from "@/components/portal/tabs/GrowthPotential";
 import ManagementNotes from "@/components/portal/tabs/ManagementNotes";
 import { type Employee, type SecurityLevel } from "@/data/employees";
-import { Settings, ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEmployees } from "@/hooks/useEmployees";
+import SettingsView from "@/components/portal/SettingsView";
+
 
 const tabs = [
   { label: "Employee Profile", isV2: false },
@@ -25,8 +27,9 @@ const tabs = [
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { profile, signOut } = useAuth();
+  const { user, profile, signOut } = useAuth();
   const securityLevel: SecurityLevel = (profile?.security_level ?? 1) as SecurityLevel;
+
 
   const { data: employees = [], isLoading, error } = useEmployees();
 
@@ -156,15 +159,9 @@ const Dashboard = () => {
             )}
 
             {section === "settings" && (
-              <div className="p-6 max-w-2xl">
-                <h1 className="text-2xl font-heading font-bold text-foreground">Settings</h1>
-                <p className="text-sm text-muted-foreground mt-1 mb-6">Firm configuration</p>
-                <div className="bg-card rounded-lg border border-border p-12 text-center">
-                  <Settings className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
-                  <p className="text-sm text-muted-foreground">Settings will be available in a future update.</p>
-                </div>
-              </div>
+              <SettingsView securityLevel={securityLevel} currentUserId={user?.id ?? null} />
             )}
+
           </>
         )}
       </div>
