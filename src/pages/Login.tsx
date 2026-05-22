@@ -9,8 +9,8 @@ import { toast } from "sonner";
 const Login = () => {
   const navigate = useNavigate();
   const { user, loading, signIn } = useAuth();
-  const [email, setEmail] = useState("sarb@clearhouse.ca");
-  const [password, setPassword] = useState("clearhouse2026");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
