@@ -89,12 +89,97 @@ const EmployeeDirectory = ({ employees, onSelectEmployee }: EmployeeDirectoryPro
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
+  const queryClient = useQueryClient();
+  const [addOpen, setAddOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    name: "",
+    position: "Associate" as Position,
+    department: "Assurance" as Department,
+    location: "Canada" as Location,
+    email: "",
+    phone: "",
+    supervisor: "",
+    tenure_with_firm: "",
+    tenure_in_role: "",
+    current_year_rating: 0,
+    current_year_rating_code: "M" as RatingCode,
+    potential_rating: "Well Placed" as PotentialRating,
+  });
+
+  const resetForm = () =>
+    setForm({
+      name: "",
+      position: "Associate",
+      department: "Assurance",
+      location: "Canada",
+      email: "",
+      phone: "",
+      supervisor: "",
+      tenure_with_firm: "",
+      tenure_in_role: "",
+      current_year_rating: 0,
+      current_year_rating_code: "M",
+      potential_rating: "Well Placed",
+    });
+
+  const addEmployee = async () => {
+    if (!form.name.trim()) {
+      toast.error("Name is required");
+      return;
+    }
+    setSaving(true);
+    const payload = {
+      name: form.name.trim(),
+      position: form.position,
+      department: form.department,
+      location: form.location,
+      email: form.email.trim(),
+      phone: form.phone.trim(),
+      supervisor: form.supervisor.trim(),
+      tenure_with_firm: form.tenure_with_firm.trim(),
+      tenure_in_role: form.tenure_in_role.trim(),
+      current_year_rating: form.current_year_rating,
+      current_year_rating_code: form.current_year_rating_code,
+      potential_rating: form.potential_rating,
+      bff_summary: "",
+      performance_what_went_well: "",
+      performance_what_could_go_better: "",
+      performance_summary: "",
+      career_aspirations_summary: "",
+      dev_plan_summary: "",
+      growth_rationale: "",
+    };
+    const { error } = await supabase.from("employees").insert([payload] as never);
+    setSaving(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Employee added");
+    setAddOpen(false);
+    resetForm();
+    queryClient.invalidateQueries({ queryKey: ["employees"] });
+  };
+
+  return (
+    <div className="flex-1 p-6 overflow-y-auto">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
           <h1 className="text-2xl font-heading font-bold text-foreground">Employees</h1>
           <Badge variant="secondary" className="text-xs font-medium">
             {filtered.length} {filtered.length === 1 ? "person" : "people"}
           </Badge>
         </div>
+        <button
+          onClick={() => setAddOpen(true)}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors"
+        >
+          <Plus className="h-4 w-4" /> Add Employee
+        </button>
       </div>
+
 
       {/* Search + Filter Bar */}
       <div className="flex items-center gap-3 mb-4">
