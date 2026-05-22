@@ -1,5 +1,8 @@
 import { useState, useMemo } from "react";
-import { Search, Filter } from "lucide-react";
+import { Search, Filter, Plus, Loader2 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { supabase } from "@/lib/supabase";
 import { departmentColors, potentialColors, type Employee, type Department, type Location, type Position, type PotentialRating } from "@/data/employees";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
