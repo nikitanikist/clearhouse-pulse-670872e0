@@ -1,5 +1,8 @@
 import { useState, useMemo } from "react";
-import { Search, Filter } from "lucide-react";
+import { Search, Filter, Plus, Loader2 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { supabase } from "@/lib/supabase";
 import { departmentColors, potentialColors, type Employee, type Department, type Location, type Position, type PotentialRating } from "@/data/employees";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -81,6 +84,79 @@ const EmployeeDirectory = ({ employees, onSelectEmployee }: EmployeeDirectoryPro
   const activeFilters = [deptFilter, locFilter, posFilter, potFilter, ratingFilter, supervisorFilter].filter(Boolean);
   const hasActiveFilters = activeFilters.length > 0;
 
+  const queryClient = useQueryClient();
+  const [addOpen, setAddOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    name: "",
+    position: "Associate" as Position,
+    department: "Assurance" as Department,
+    location: "Canada" as Location,
+    email: "",
+    phone: "",
+    supervisor: "",
+    tenure_with_firm: "",
+    tenure_in_role: "",
+    current_year_rating: 0,
+    current_year_rating_code: "M" as RatingCode,
+    potential_rating: "Well Placed" as PotentialRating,
+  });
+
+  const resetForm = () =>
+    setForm({
+      name: "",
+      position: "Associate",
+      department: "Assurance",
+      location: "Canada",
+      email: "",
+      phone: "",
+      supervisor: "",
+      tenure_with_firm: "",
+      tenure_in_role: "",
+      current_year_rating: 0,
+      current_year_rating_code: "M",
+      potential_rating: "Well Placed",
+    });
+
+  const addEmployee = async () => {
+    if (!form.name.trim()) {
+      toast.error("Name is required");
+      return;
+    }
+    setSaving(true);
+    const payload = {
+      name: form.name.trim(),
+      position: form.position,
+      department: form.department,
+      location: form.location,
+      email: form.email.trim(),
+      phone: form.phone.trim(),
+      supervisor: form.supervisor.trim(),
+      tenure_with_firm: form.tenure_with_firm.trim(),
+      tenure_in_role: form.tenure_in_role.trim(),
+      current_year_rating: form.current_year_rating,
+      current_year_rating_code: form.current_year_rating_code,
+      potential_rating: form.potential_rating,
+      bff_summary: "",
+      performance_what_went_well: "",
+      performance_what_could_go_better: "",
+      performance_summary: "",
+      career_aspirations_summary: "",
+      dev_plan_summary: "",
+      growth_rationale: "",
+    };
+    const { error } = await supabase.from("employees").insert([payload] as never);
+    setSaving(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Employee added");
+    setAddOpen(false);
+    resetForm();
+    queryClient.invalidateQueries({ queryKey: ["employees"] });
+  };
+
   return (
     <div className="flex-1 p-6 overflow-y-auto">
       {/* Header */}
@@ -91,7 +167,14 @@ const EmployeeDirectory = ({ employees, onSelectEmployee }: EmployeeDirectoryPro
             {filtered.length} {filtered.length === 1 ? "person" : "people"}
           </Badge>
         </div>
+        <button
+          onClick={() => setAddOpen(true)}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors"
+        >
+          <Plus className="h-4 w-4" /> Add Employee
+        </button>
       </div>
+
 
       {/* Search + Filter Bar */}
       <div className="flex items-center gap-3 mb-4">
@@ -224,6 +307,120 @@ const EmployeeDirectory = ({ employees, onSelectEmployee }: EmployeeDirectoryPro
           </div>
         )}
       </div>
+
+      {addOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
+          onClick={() => !saving && setAddOpen(false)}
+        >
+          <div
+            className="bg-card rounded-lg shadow-lg w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-heading font-bold text-foreground mb-4">Add Employee</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="md:col-span-2">
+                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Name *</label>
+                <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Position *</label>
+                <select
+                  value={form.position}
+                  onChange={(e) => setForm({ ...form, position: e.target.value as Position })}
+                  className="w-full px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  {positions.map((p) => <option key={p} value={p}>{p}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Department *</label>
+                <select
+                  value={form.department}
+                  onChange={(e) => setForm({ ...form, department: e.target.value as Department })}
+                  className="w-full px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  {departments.map((d) => <option key={d} value={d}>{d}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Location *</label>
+                <select
+                  value={form.location}
+                  onChange={(e) => setForm({ ...form, location: e.target.value as Location })}
+                  className="w-full px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  {locations.map((l) => <option key={l} value={l}>{l}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Supervisor</label>
+                <Input value={form.supervisor} onChange={(e) => setForm({ ...form, supervisor: e.target.value })} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Email</label>
+                <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Phone</label>
+                <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Tenure with Firm</label>
+                <Input placeholder="e.g. 2 years, 3 months" value={form.tenure_with_firm} onChange={(e) => setForm({ ...form, tenure_with_firm: e.target.value })} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Tenure in Role</label>
+                <Input value={form.tenure_in_role} onChange={(e) => setForm({ ...form, tenure_in_role: e.target.value })} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Current Year Rating (0–5)</label>
+                <Input type="number" min={0} max={5} step={0.1} value={form.current_year_rating} onChange={(e) => setForm({ ...form, current_year_rating: Number(e.target.value) })} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Rating Code</label>
+                <select
+                  value={form.current_year_rating_code}
+                  onChange={(e) => setForm({ ...form, current_year_rating_code: e.target.value as RatingCode })}
+                  className="w-full px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <option value="E">E — Excellent</option>
+                  <option value="G">G — Good</option>
+                  <option value="M">M — Meets</option>
+                  <option value="NI">NI — Needs Improvement</option>
+                </select>
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Potential Rating</label>
+                <select
+                  value={form.potential_rating}
+                  onChange={(e) => setForm({ ...form, potential_rating: e.target.value as PotentialRating })}
+                  className="w-full px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  {potentials.map((p) => <option key={p} value={p}>{p}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-6">
+              <button
+                onClick={() => setAddOpen(false)}
+                disabled={saving}
+                className="px-4 py-2 rounded-md border border-border text-sm font-medium hover:bg-muted transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={addEmployee}
+                disabled={saving || !form.name.trim()}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
+              >
+                {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+                Add Employee
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,0 +1,1 @@
+create policy "employees_insert" on public.employees for insert to authenticated with check (public.can_view_employee(position));
