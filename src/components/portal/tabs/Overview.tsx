@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { ChevronDown, ChevronRight, Download, Trash2, Eye, Loader2 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import type { Employee } from "@/data/employees";
 import {
   useEmployeeRow,
@@ -8,6 +10,7 @@ import {
   usePdrDocuments,
 } from "@/hooks/useEmployees";
 import type { CompetencyRating } from "@/types/database";
+import { supabase } from "@/lib/supabase";
 import PdrUploader from "@/components/portal/pdr/PdrUploader";
 import PdrReviewDialog from "@/components/portal/pdr/PdrReviewDialog";
 import type { ParsedPdr } from "@/lib/pdr/types";
@@ -85,6 +88,8 @@ const formatDate = (iso: string) =>
 const Overview = ({ employee }: OverviewProps) => {
   const [openSection, setOpenSection] = useState<string | null>(null);
   const [parsed, setParsed] = useState<ParsedPdr | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
   const { data: row, isLoading: loadingRow } = useEmployeeRow(employee.id);
   const { data: competencies = [] } = useEmployeeCoreCompetencies(employee.id);
@@ -92,6 +97,25 @@ const Overview = ({ employee }: OverviewProps) => {
   const { data: pdrs = [] } = usePdrDocuments(employee.id);
 
   const toggle = (key: string) => setOpenSection((prev) => (prev === key ? null : key));
+
+  const handleDeletePdr = async (docId: string, filePath: string) => {
+    if (!confirm("Delete this PDR document? This cannot be undone.")) return;
+    setDeletingId(docId);
+    const { error: storageErr } = await supabase.storage.from("pdr-documents").remove([filePath]);
+    if (storageErr) {
+      setDeletingId(null);
+      toast.error(`Storage delete failed: ${storageErr.message}`);
+      return;
+    }
+    const { error: rowErr } = await supabase.from("pdr_documents").delete().eq("id", docId);
+    setDeletingId(null);
+    if (rowErr) {
+      toast.error(`Database delete failed: ${rowErr.message}`);
+      return;
+    }
+    toast.success("PDR deleted");
+    queryClient.invalidateQueries({ queryKey: ["employee", employee.id, "pdrs"] });
+  };
 
   if (loadingRow || !row) {
     return (
@@ -217,7 +241,14 @@ const Overview = ({ employee }: OverviewProps) => {
                     <div className="flex gap-2">
                       <button className="text-primary hover:text-primary/80 transition-colors" title="View"><Eye className="h-4 w-4" /></button>
                       <button className="text-primary hover:text-primary/80 transition-colors" title="Download"><Download className="h-4 w-4" /></button>
-                      <button className="text-destructive hover:text-destructive/80 transition-colors"><Trash2 className="h-4 w-4" /></button>
+                      <button
+                        onClick={() => handleDeletePdr(doc.id, doc.file_path)}
+                        disabled={deletingId === doc.id}
+                        className="text-destructive hover:text-destructive/80 transition-colors disabled:opacity-50"
+                        title="Delete"
+                      >
+                        {deletingId === doc.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                      </button>
                     </div>
                   </td>
                 </tr>

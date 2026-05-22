@@ -5,19 +5,12 @@ import clearhouseLogo from "@/assets/clearhouse-logo.png";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
-const demoCredentials = [
-  { level: "L1", email: "sarb@clearhouse.ca", desc: "Partner — full access" },
-  { level: "L2", email: "david.chen@clearhouse.ca", desc: "Manager and below" },
-  { level: "L3", email: "priya.sharma@clearhouse.ca", desc: "Senior Associate and below" },
-  { level: "L4", email: "emily.tremblay@clearhouse.ca", desc: "Intermediate & Associate" },
-  { level: "L5", email: "anita.desai@clearhouse.ca", desc: "Operations only" },
-];
 
 const Login = () => {
   const navigate = useNavigate();
   const { user, loading, signIn } = useAuth();
-  const [email, setEmail] = useState("sarb@clearhouse.ca");
-  const [password, setPassword] = useState("clearhouse2026");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -87,26 +80,6 @@ const Login = () => {
             Sign In
           </button>
 
-          <div className="border-t border-border pt-4">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-              Demo accounts (password: clearhouse2026)
-            </p>
-            <ul className="space-y-1">
-              {demoCredentials.map((c) => (
-                <li key={c.email} className="text-[11px] text-muted-foreground flex gap-2">
-                  <span className="font-semibold text-foreground w-7">{c.level}</span>
-                  <button
-                    type="button"
-                    onClick={() => setEmail(c.email)}
-                    className="text-primary hover:underline truncate"
-                  >
-                    {c.email}
-                  </button>
-                  <span className="opacity-60 hidden sm:inline">— {c.desc}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
 
           <p className="text-center text-xs text-muted-foreground">
             © 2026 Clearhouse LLP. Internal Use Only.
