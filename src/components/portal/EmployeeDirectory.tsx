@@ -84,11 +84,6 @@ const EmployeeDirectory = ({ employees, onSelectEmployee }: EmployeeDirectoryPro
   const activeFilters = [deptFilter, locFilter, posFilter, potFilter, ratingFilter, supervisorFilter].filter(Boolean);
   const hasActiveFilters = activeFilters.length > 0;
 
-  return (
-    <div className="flex-1 p-6 overflow-y-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
   const queryClient = useQueryClient();
   const [addOpen, setAddOpen] = useState(false);
   const [saving, setSaving] = useState(false);
