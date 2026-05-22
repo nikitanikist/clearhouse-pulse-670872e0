@@ -1,0 +1,1 @@
+create policy "notes_update" on public.management_notes for update to authenticated using (exists (select 1 from public.employees e where e.id = management_notes.employee_id and public.can_view_employee(e.position))) with check (exists (select 1 from public.employees e where e.id = management_notes.employee_id and public.can_view_employee(e.position)));
