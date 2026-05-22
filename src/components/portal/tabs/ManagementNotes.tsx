@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Plus, Loader2 } from "lucide-react";
+import { Plus, Loader2, Pencil, Trash2 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useQueryClient } from "@tanstack/react-query";
 import { useManagementNotes } from "@/hooks/useEmployees";
 import { supabase } from "@/lib/supabase";
@@ -28,6 +29,39 @@ const ManagementNotes = ({ employeeId, authorName }: ManagementNotesProps) => {
   const [newNote, setNewNote] = useState("");
   const [authorFilter, setAuthorFilter] = useState("all");
   const [saving, setSaving] = useState(false);
+  const [editNote, setEditNote] = useState<{ id: string; text: string } | null>(null);
+  const [editSaving, setEditSaving] = useState(false);
+
+  const invalidate = () =>
+    queryClient.invalidateQueries({ queryKey: ["employee", employeeId, "notes"] });
+
+  const saveEdit = async () => {
+    if (!editNote || !editNote.text.trim()) return;
+    setEditSaving(true);
+    const { error } = await supabase
+      .from("management_notes")
+      .update({ comment_text: editNote.text.trim() } as never)
+      .eq("id", editNote.id);
+    setEditSaving(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Note updated");
+    setEditNote(null);
+    invalidate();
+  };
+
+  const deleteNote = async (id: string) => {
+    if (!confirm("Delete this note? This cannot be undone.")) return;
+    const { error } = await supabase.from("management_notes").delete().eq("id", id);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Note deleted");
+    invalidate();
+  };
 
   const uniqueAuthors = Array.from(new Set(notes.map((n) => n.comment_by)));
   const filteredNotes =
@@ -96,6 +130,7 @@ const ManagementNotes = ({ employeeId, authorName }: ManagementNotesProps) => {
               <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[140px]">Date</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Comments</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[180px]">Comments Provided By</th>
+              <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[100px]">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -104,6 +139,24 @@ const ManagementNotes = ({ employeeId, authorName }: ManagementNotesProps) => {
                 <td className="px-4 py-3 text-sm text-muted-foreground align-top whitespace-nowrap">{formatDate(note.created_at)}</td>
                 <td className="px-4 py-3 text-sm text-foreground leading-relaxed">{note.comment_text}</td>
                 <td className="px-4 py-3 text-sm font-medium text-primary align-top whitespace-nowrap">{note.comment_by}</td>
+                <td className="px-4 py-3 align-top whitespace-nowrap text-right">
+                  <div className="inline-flex items-center gap-1">
+                    <button
+                      onClick={() => setEditNote({ id: note.id, text: note.comment_text })}
+                      className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-muted transition-colors"
+                      aria-label="Edit note"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => deleteNote(note.id)}
+                      className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-muted transition-colors"
+                      aria-label="Delete note"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -120,6 +173,36 @@ const ManagementNotes = ({ employeeId, authorName }: ManagementNotesProps) => {
           )
         )}
       </div>
+
+      <Dialog open={!!editNote} onOpenChange={(o) => !o && setEditNote(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Note</DialogTitle>
+          </DialogHeader>
+          <textarea
+            value={editNote?.text ?? ""}
+            onChange={(e) => setEditNote((prev) => (prev ? { ...prev, text: e.target.value } : prev))}
+            rows={5}
+            className="w-full px-4 py-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+          />
+          <DialogFooter>
+            <button
+              onClick={() => setEditNote(null)}
+              className="px-4 py-2 rounded-md border border-input bg-background text-sm font-medium hover:bg-muted transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={saveEdit}
+              disabled={editSaving || !editNote?.text.trim()}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
+            >
+              {editSaving && <Loader2 className="h-4 w-4 animate-spin" />}
+              Save
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
