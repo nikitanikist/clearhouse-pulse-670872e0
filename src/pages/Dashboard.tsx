@@ -27,8 +27,9 @@ const tabs = [
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { profile, signOut } = useAuth();
+  const { user, profile, signOut } = useAuth();
   const securityLevel: SecurityLevel = (profile?.security_level ?? 1) as SecurityLevel;
+
 
   const { data: employees = [], isLoading, error } = useEmployees();
 
