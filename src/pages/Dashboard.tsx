@@ -159,15 +159,9 @@ const Dashboard = () => {
             )}
 
             {section === "settings" && (
-              <div className="p-6 max-w-2xl">
-                <h1 className="text-2xl font-heading font-bold text-foreground">Settings</h1>
-                <p className="text-sm text-muted-foreground mt-1 mb-6">Firm configuration</p>
-                <div className="bg-card rounded-lg border border-border p-12 text-center">
-                  <Settings className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
-                  <p className="text-sm text-muted-foreground">Settings will be available in a future update.</p>
-                </div>
-              </div>
+              <SettingsView securityLevel={securityLevel} currentUserId={user?.id ?? null} />
             )}
+
           </>
         )}
       </div>
