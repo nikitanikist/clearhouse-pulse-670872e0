@@ -173,6 +173,36 @@ const ManagementNotes = ({ employeeId, authorName }: ManagementNotesProps) => {
           )
         )}
       </div>
+
+      <Dialog open={!!editNote} onOpenChange={(o) => !o && setEditNote(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Note</DialogTitle>
+          </DialogHeader>
+          <textarea
+            value={editNote?.text ?? ""}
+            onChange={(e) => setEditNote((prev) => (prev ? { ...prev, text: e.target.value } : prev))}
+            rows={5}
+            className="w-full px-4 py-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+          />
+          <DialogFooter>
+            <button
+              onClick={() => setEditNote(null)}
+              className="px-4 py-2 rounded-md border border-input bg-background text-sm font-medium hover:bg-muted transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={saveEdit}
+              disabled={editSaving || !editNote?.text.trim()}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
+            >
+              {editSaving && <Loader2 className="h-4 w-4 animate-spin" />}
+              Save
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
