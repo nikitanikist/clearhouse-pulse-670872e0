@@ -53,7 +53,7 @@ export interface EmployeeRow {
   supervisor: string;
   email: string;
   phone: string;
-  current_year_rating: number;
+  current_year_rating: number | null;
   current_year_rating_code: CompetencyRating;
   potential_rating: PotentialRating;
   bff_summary: string;

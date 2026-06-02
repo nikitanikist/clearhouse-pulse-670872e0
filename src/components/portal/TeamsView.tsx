@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { departmentColors, potentialColors, type Employee, type Department } from "@/data/employees";
 import { Star, Users, Shield, Calculator, Lightbulb, Settings, ChevronDown } from "lucide-react";
+import { averageRating, formatAverage } from "@/lib/ratings";
 
 interface TeamsViewProps {
   employees: Employee[];
@@ -21,10 +22,9 @@ const TeamsView = ({ employees, onSelectEmployee }: TeamsViewProps) => {
 
   const grouped = deptOrder.map((dept) => {
     const members = employees.filter((e) => e.department === dept);
-    const avgRating = members.length
-      ? (members.reduce((sum, m) => sum + m.currentYearRating, 0) / members.length).toFixed(1)
-      : "0";
-    return { dept, members, avgRating };
+    const avgRating = formatAverage(averageRating(members.map((m) => m.currentYearRating)));
+    const ratedCount = members.filter((m) => m.currentYearRating !== null).length;
+    return { dept, members, avgRating, ratedCount };
   });
 
   const activeDept = grouped.find((g) => g.dept === selectedDept);
@@ -90,12 +90,12 @@ const TeamsView = ({ employees, onSelectEmployee }: TeamsViewProps) => {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-border text-xs text-muted-foreground">
-                  <th className="text-left px-6 py-3 font-medium">Name</th>
-                  <th className="text-left px-6 py-3 font-medium">Position</th>
-                  <th className="text-left px-6 py-3 font-medium">Location</th>
-                  <th className="text-left px-6 py-3 font-medium">Rating</th>
-                  <th className="text-left px-6 py-3 font-medium">Potential</th>
+                <tr className="border-b border-border bg-muted/30">
+                  <th className="text-left px-6 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Name</th>
+                  <th className="text-left px-6 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Position</th>
+                  <th className="text-left px-6 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Location</th>
+                  <th className="text-left px-6 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Rating</th>
+                  <th className="text-left px-6 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Potential</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -116,10 +116,14 @@ const TeamsView = ({ employees, onSelectEmployee }: TeamsViewProps) => {
                     <td className="px-6 py-4 text-sm text-muted-foreground">{emp.position}</td>
                     <td className="px-6 py-4 text-sm text-muted-foreground">{emp.location}</td>
                     <td className="px-6 py-4">
-                      <div className="flex items-center gap-1">
-                        <Star className="h-3.5 w-3.5 fill-warning text-warning" />
-                        <span className="text-sm font-medium text-foreground">{emp.currentYearRating}</span>
-                      </div>
+                      {emp.currentYearRating === null ? (
+                        <span className="text-sm text-muted-foreground">—</span>
+                      ) : (
+                        <div className="flex items-center gap-1">
+                          <Star className="h-3.5 w-3.5 fill-warning text-warning" />
+                          <span className="text-sm font-medium text-foreground">{emp.currentYearRating}</span>
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">

@@ -1,6 +1,7 @@
 import { Users, Building2, TrendingUp, Star, ArrowUpRight } from "lucide-react";
 import type { Employee } from "@/data/employees";
 import { departmentColors } from "@/data/employees";
+import { averageRating, formatAverage } from "@/lib/ratings";
 
 interface DashboardHomeProps {
   employees: Employee[];
@@ -13,12 +14,14 @@ const DashboardHome = ({ employees, onNavigateToEmployee }: DashboardHomeProps) 
     return acc;
   }, {});
 
-  const avgRating = employees.length
-    ? (employees.reduce((sum, e) => sum + e.currentYearRating, 0) / employees.length).toFixed(1)
-    : "—";
+  const ratedCount = employees.filter((e) => e.currentYearRating !== null).length;
+  const avg = averageRating(employees.map((e) => e.currentYearRating));
 
-  const topPerformers = [...employees].sort((a, b) => b.currentYearRating - a.currentYearRating).slice(0, 5);
-  const highPotential = employees.filter((e) => ["Well Placed","Ready Now"].includes(e.potential));
+  const topPerformers = [...employees]
+    .filter((e) => e.currentYearRating !== null)
+    .sort((a, b) => (b.currentYearRating ?? 0) - (a.currentYearRating ?? 0))
+    .slice(0, 5);
+  const highPotential = employees.filter((e) => ["Well Placed", "Ready Now"].includes(e.potential));
 
   return (
     <div className="p-6 space-y-6 max-w-6xl">
@@ -27,15 +30,18 @@ const DashboardHome = ({ employees, onNavigateToEmployee }: DashboardHomeProps) 
         <p className="text-sm text-muted-foreground mt-1">Employee portal overview</p>
       </div>
 
-      {/* Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard icon={Users} label="Total Employees" value={String(employees.length)} />
         <StatCard icon={Building2} label="Departments" value={String(Object.keys(deptCounts).length)} />
-        <StatCard icon={Star} label="Avg. Rating" value={avgRating} />
+        <StatCard
+          icon={Star}
+          label="Avg. Rating"
+          value={formatAverage(avg)}
+          sublabel={`${ratedCount} of ${employees.length} rated`}
+        />
         <StatCard icon={TrendingUp} label="High Potential" value={String(highPotential.length)} />
       </div>
 
-      {/* Department Breakdown */}
       <div className="bg-card rounded-lg border border-border p-6">
         <h2 className="text-base font-heading font-bold text-foreground mb-4">Department Breakdown</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -51,10 +57,12 @@ const DashboardHome = ({ employees, onNavigateToEmployee }: DashboardHomeProps) 
         </div>
       </div>
 
-      {/* Top Performers */}
       <div className="bg-card rounded-lg border border-border p-6">
         <h2 className="text-base font-heading font-bold text-foreground mb-4">Top Performers</h2>
         <div className="space-y-2">
+          {topPerformers.length === 0 && (
+            <p className="text-sm text-muted-foreground px-4 py-3">No rated employees yet.</p>
+          )}
           {topPerformers.map((emp) => (
             <button
               key={emp.id}
@@ -82,7 +90,6 @@ const DashboardHome = ({ employees, onNavigateToEmployee }: DashboardHomeProps) 
         </div>
       </div>
 
-      {/* High Potential */}
       <div className="bg-card rounded-lg border border-border p-6">
         <h2 className="text-base font-heading font-bold text-foreground mb-4">High Potential Employees</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -101,7 +108,7 @@ const DashboardHome = ({ employees, onNavigateToEmployee }: DashboardHomeProps) 
                   <p className="text-xs text-muted-foreground">{emp.position}</p>
                 </div>
               </div>
-              <p className="text-xs text-muted-foreground line-clamp-2">{emp.bffSummary}</p>
+              <p className="text-xs text-muted-foreground line-clamp-2">{emp.bffSummary || "—"}</p>
             </button>
           ))}
         </div>
@@ -110,7 +117,17 @@ const DashboardHome = ({ employees, onNavigateToEmployee }: DashboardHomeProps) 
   );
 };
 
-const StatCard = ({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string }) => (
+const StatCard = ({
+  icon: Icon,
+  label,
+  value,
+  sublabel,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: string;
+  sublabel?: string;
+}) => (
   <div className="bg-card rounded-lg border border-border p-5">
     <div className="flex items-center gap-3">
       <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -119,6 +136,7 @@ const StatCard = ({ icon: Icon, label, value }: { icon: React.ElementType; label
       <div>
         <p className="text-2xl font-heading font-bold text-foreground">{value}</p>
         <p className="text-xs text-muted-foreground">{label}</p>
+        {sublabel && <p className="text-[10px] text-muted-foreground mt-0.5">{sublabel}</p>}
       </div>
     </div>
   </div>

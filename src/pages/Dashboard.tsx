@@ -18,11 +18,11 @@ import SettingsView from "@/components/portal/SettingsView";
 
 
 const tabs = [
-  { label: "Employee Profile", isV2: false },
-  { label: "Overview", isV2: true },
-  { label: "Interpersonal Skills & Firm Fit", isV2: true },
-  { label: "Growth & Potential", isV2: true },
-  { label: "Management Notes", isV2: false },
+  { label: "Employee Profile" },
+  { label: "Overview" },
+  { label: "Interpersonal Skills & Firm Fit" },
+  { label: "Growth & Potential" },
+  { label: "Management Notes" },
 ];
 
 const Dashboard = () => {
@@ -129,21 +129,20 @@ const Dashboard = () => {
                   </button>
                 </div>
                 <ProfileHeader employee={selected} />
-                <div className="bg-card border-b border-border px-6 flex gap-0 overflow-x-auto">
+                <div className="bg-card border-b border-border px-6 flex gap-0 overflow-x-auto" role="tablist">
                   {tabs.map((tab, i) => (
                     <button
                       key={tab.label}
+                      role="tab"
+                      aria-selected={i === activeTab}
                       onClick={() => setActiveTab(i)}
-                      className={`px-4 py-3 text-sm font-medium whitespace-nowrap transition-all duration-200 border-b-2 flex items-center gap-1.5 ${
+                      className={`px-4 py-3 text-sm font-medium whitespace-nowrap transition-all duration-200 border-b-2 ${
                         i === activeTab
                           ? "border-b-primary text-primary"
                           : "border-b-transparent text-muted-foreground hover:text-foreground"
                       }`}
                     >
                       {tab.label}
-                      {tab.isV2 && (
-                        <span className="px-1.5 py-0.5 text-[10px] font-bold leading-none rounded bg-[#10B981] text-white uppercase">V2</span>
-                      )}
                     </button>
                   ))}
                 </div>
