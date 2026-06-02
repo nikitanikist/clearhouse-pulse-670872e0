@@ -118,7 +118,7 @@ export type Database = {
           bff_summary: string
           career_aspirations_summary: string
           created_at: string
-          current_year_rating: number
+          current_year_rating: number | null
           current_year_rating_code: Database["public"]["Enums"]["competency_rating"]
           department: Database["public"]["Enums"]["employee_department"]
           dev_plan_summary: string
@@ -142,7 +142,7 @@ export type Database = {
           bff_summary?: string
           career_aspirations_summary?: string
           created_at?: string
-          current_year_rating?: number
+          current_year_rating?: number | null
           current_year_rating_code?: Database["public"]["Enums"]["competency_rating"]
           department: Database["public"]["Enums"]["employee_department"]
           dev_plan_summary?: string
@@ -166,7 +166,7 @@ export type Database = {
           bff_summary?: string
           career_aspirations_summary?: string
           created_at?: string
-          current_year_rating?: number
+          current_year_rating?: number | null
           current_year_rating_code?: Database["public"]["Enums"]["competency_rating"]
           department?: Database["public"]["Enums"]["employee_department"]
           dev_plan_summary?: string

@@ -31,7 +31,7 @@ export const rowToEmployee = (r: EmployeeRow): Employee => ({
   tenure: r.tenure_with_firm,
   tenureInRole: r.tenure_in_role,
   supervisor: r.supervisor,
-  currentYearRating: Number(r.current_year_rating),
+  currentYearRating: r.current_year_rating === null ? null : Number(r.current_year_rating),
   previousYearRating: 0,
   bffSummary: r.bff_summary,
 });

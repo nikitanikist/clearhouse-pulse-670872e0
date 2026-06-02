@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
@@ -9,6 +10,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface SettingsViewProps {
   securityLevel: number;
@@ -37,9 +48,18 @@ const LEGEND: { level: number; desc: string }[] = [
   { level: 5, desc: "Operations staff only." },
 ];
 
+interface PendingChange {
+  userId: string;
+  fullName: string;
+  fromLevel: number;
+  toLevel: number;
+}
+
 const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
   const qc = useQueryClient();
   const isAdmin = securityLevel === 1;
+  const [pending, setPending] = useState<PendingChange | null>(null);
+  const [applying, setApplying] = useState(false);
 
   const { data: users = [], isLoading, error } = useQuery({
     queryKey: ["portal-users"],
@@ -54,23 +74,27 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
     },
   });
 
-  const handleChange = async (userId: string, newLevel: number) => {
+  const applyChange = async () => {
+    if (!pending) return;
+    setApplying(true);
     const { error } = await supabase
       .from("profiles")
-      .update({ security_level: newLevel } as never)
-      .eq("user_id", userId);
+      .update({ security_level: pending.toLevel } as never)
+      .eq("user_id", pending.userId);
+    setApplying(false);
     if (error) {
       toast.error("Failed to update access level", { description: error.message });
       return;
     }
-    toast.success("Access level updated");
+    toast.success(`${pending.fullName || "User"} is now ${LEVEL_LABELS[pending.toLevel]}`);
+    setPending(null);
     qc.invalidateQueries({ queryKey: ["portal-users"] });
   };
 
   return (
     <div className="p-6 max-w-5xl">
       <h1 className="text-2xl font-heading font-bold text-foreground">Settings</h1>
-      <p className="text-sm text-muted-foreground mt-1 mb-6">Firm configuration</p>
+      <p className="text-sm text-muted-foreground mt-1 mb-6">User & access management</p>
 
       <section className="bg-card rounded-lg border border-border p-6">
         <h2 className="text-lg font-heading font-semibold text-foreground">User & Access Management</h2>
@@ -102,10 +126,10 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
             {!isLoading && !error && (
               <div className="overflow-x-auto rounded-md border border-border">
                 <table className="w-full text-sm">
-                  <thead className="bg-muted/40 text-muted-foreground">
+                  <thead className="bg-muted/40">
                     <tr>
-                      <th className="text-left font-medium px-4 py-2">Name</th>
-                      <th className="text-left font-medium px-4 py-2 w-[320px]">Security Level</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Name</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[320px]">Security Level</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -123,7 +147,16 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
                             <Select
                               value={String(u.security_level)}
                               disabled={isSelf}
-                              onValueChange={(v) => handleChange(u.user_id, Number(v))}
+                              onValueChange={(v) => {
+                                const toLevel = Number(v);
+                                if (toLevel === u.security_level) return;
+                                setPending({
+                                  userId: u.user_id,
+                                  fullName: u.full_name,
+                                  fromLevel: u.security_level,
+                                  toLevel,
+                                });
+                              }}
                             >
                               <SelectTrigger className="h-9 w-full">
                                 <SelectValue />
@@ -165,6 +198,34 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
           </>
         )}
       </section>
+
+      <AlertDialog open={!!pending} onOpenChange={(o) => !o && !applying && setPending(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Change access level?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pending && (
+                <>
+                  Change <span className="font-semibold text-foreground">{pending.fullName || "this user"}</span> from{" "}
+                  <span className="font-semibold text-foreground">{LEVEL_LABELS[pending.fromLevel]}</span> to{" "}
+                  <span className="font-semibold text-foreground">{LEVEL_LABELS[pending.toLevel]}</span>?
+                  This takes effect immediately and will change what employees they can see.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={applying}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={applyChange} disabled={applying}>
+              {applying ? (
+                <span className="inline-flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Updating…
+                </span>
+              ) : "Confirm change"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

@@ -11,18 +11,18 @@ import InterpersonalSkills from "@/components/portal/tabs/InterpersonalSkills";
 import GrowthPotential from "@/components/portal/tabs/GrowthPotential";
 import ManagementNotes from "@/components/portal/tabs/ManagementNotes";
 import { type Employee, type SecurityLevel } from "@/data/employees";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEmployees } from "@/hooks/useEmployees";
 import SettingsView from "@/components/portal/SettingsView";
 
 
 const tabs = [
-  { label: "Employee Profile", isV2: false },
-  { label: "Overview", isV2: true },
-  { label: "Interpersonal Skills & Firm Fit", isV2: true },
-  { label: "Growth & Potential", isV2: true },
-  { label: "Management Notes", isV2: false },
+  { label: "Employee Profile" },
+  { label: "Overview" },
+  { label: "Interpersonal Skills & Firm Fit" },
+  { label: "Growth & Potential" },
+  { label: "Management Notes" },
 ];
 
 const Dashboard = () => {
@@ -89,8 +89,15 @@ const Dashboard = () => {
 
       <div className="flex-1 flex flex-col min-w-0">
         {isLoading && (
-          <div className="flex-1 flex items-center justify-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" /> Loading employees…
+          <div className="flex-1 p-6 space-y-4">
+            <div className="h-8 w-48 bg-muted rounded animate-pulse" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {[0, 1, 2, 3].map((i) => (
+                <div key={i} className="h-24 bg-card border border-border rounded-lg animate-pulse" />
+              ))}
+            </div>
+            <div className="h-48 bg-card border border-border rounded-lg animate-pulse" />
+            <div className="h-72 bg-card border border-border rounded-lg animate-pulse" />
           </div>
         )}
         {error && (
@@ -129,21 +136,20 @@ const Dashboard = () => {
                   </button>
                 </div>
                 <ProfileHeader employee={selected} />
-                <div className="bg-card border-b border-border px-6 flex gap-0 overflow-x-auto">
+                <div className="bg-card border-b border-border px-6 flex gap-0 overflow-x-auto" role="tablist">
                   {tabs.map((tab, i) => (
                     <button
                       key={tab.label}
+                      role="tab"
+                      aria-selected={i === activeTab}
                       onClick={() => setActiveTab(i)}
-                      className={`px-4 py-3 text-sm font-medium whitespace-nowrap transition-all duration-200 border-b-2 flex items-center gap-1.5 ${
+                      className={`px-4 py-3 text-sm font-medium whitespace-nowrap transition-all duration-200 border-b-2 ${
                         i === activeTab
                           ? "border-b-primary text-primary"
                           : "border-b-transparent text-muted-foreground hover:text-foreground"
                       }`}
                     >
                       {tab.label}
-                      {tab.isV2 && (
-                        <span className="px-1.5 py-0.5 text-[10px] font-bold leading-none rounded bg-[#10B981] text-white uppercase">V2</span>
-                      )}
                     </button>
                   ))}
                 </div>

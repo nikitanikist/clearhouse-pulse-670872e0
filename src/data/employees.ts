@@ -19,7 +19,8 @@ export interface Employee {
   tenure: string;
   tenureInRole: string;
   supervisor: string;
-  currentYearRating: number;
+  /** Null when the employee has not yet been rated. */
+  currentYearRating: number | null;
   /** Removed from V2 spec but kept optional for legacy components. */
   previousYearRating?: number;
   bffSummary: string;

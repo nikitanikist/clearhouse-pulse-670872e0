@@ -28,12 +28,16 @@ const navItems: { id: NavSection; label: string; icon: React.ElementType }[] = [
 
 const AppSidebar = ({ activeSection, onNavigate, securityLevel, userEmail, onSignOut }: AppSidebarProps) => {
   return (
-    <aside className="w-[220px] min-w-[220px] bg-sidebar flex flex-col h-screen sticky top-0">
-      {/* Logo */}
+    <aside className="w-[220px] min-w-[220px] bg-sidebar flex flex-col h-screen sticky top-0" aria-label="Primary">
+      {/* Brand (intentionally not an h1 — page titles own h1) */}
       <div className="px-5 pt-6 pb-6">
-        <h1 className="text-lg font-heading font-extrabold tracking-[0.15em] text-sidebar-foreground">
+        <div
+          role="img"
+          aria-label="Clearhouse"
+          className="text-lg font-heading font-extrabold tracking-[0.15em] text-sidebar-foreground"
+        >
           CLEARHOUSE
-        </h1>
+        </div>
       </div>
 
       {/* Nav */}
@@ -47,7 +51,7 @@ const AppSidebar = ({ activeSection, onNavigate, securityLevel, userEmail, onSig
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
                 active
                   ? "bg-sidebar-accent text-sidebar-foreground"
-                  : "text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
+                  : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
               }`}
             >
               <item.icon className="h-4 w-4 flex-shrink-0" />
@@ -59,12 +63,12 @@ const AppSidebar = ({ activeSection, onNavigate, securityLevel, userEmail, onSig
 
       {/* Footer */}
       <div className="px-4 py-4 border-t border-sidebar-border">
-        <p className="text-xs text-sidebar-foreground/50 mb-1">Logged in as</p>
+        <p className="text-xs text-sidebar-foreground/75 mb-1">Logged in as</p>
         <p className="text-sm font-medium text-sidebar-foreground truncate">{userEmail ?? "—"}</p>
-        <p className="text-[10px] text-sidebar-foreground/40 mt-0.5">{securityLabels[securityLevel]}</p>
+        <p className="text-xs text-sidebar-foreground/70 mt-0.5">{securityLabels[securityLevel]}</p>
         <button
           onClick={onSignOut}
-          className="mt-3 flex items-center gap-2 text-xs text-sidebar-foreground/50 hover:text-sidebar-foreground transition-colors"
+          className="mt-3 flex items-center gap-2 text-xs text-sidebar-foreground/75 hover:text-sidebar-foreground transition-colors"
         >
           <LogOut className="h-3.5 w-3.5" />
           Sign Out
