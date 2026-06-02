@@ -89,8 +89,15 @@ const Dashboard = () => {
 
       <div className="flex-1 flex flex-col min-w-0">
         {isLoading && (
-          <div className="flex-1 flex items-center justify-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" /> Loading employees…
+          <div className="flex-1 p-6 space-y-4">
+            <div className="h-8 w-48 bg-muted rounded animate-pulse" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {[0, 1, 2, 3].map((i) => (
+                <div key={i} className="h-24 bg-card border border-border rounded-lg animate-pulse" />
+              ))}
+            </div>
+            <div className="h-48 bg-card border border-border rounded-lg animate-pulse" />
+            <div className="h-72 bg-card border border-border rounded-lg animate-pulse" />
           </div>
         )}
         {error && (

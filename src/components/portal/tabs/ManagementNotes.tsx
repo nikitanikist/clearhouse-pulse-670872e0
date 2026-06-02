@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Plus, Loader2, Pencil, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { useQueryClient } from "@tanstack/react-query";
 import { useManagementNotes } from "@/hooks/useEmployees";
 import { supabase } from "@/lib/supabase";
@@ -88,7 +89,9 @@ const ManagementNotes = ({ employeeId, authorName }: ManagementNotesProps) => {
     <div className="space-y-6">
       <div className="bg-card rounded-lg border border-border shadow-sm p-6">
         <h3 className="text-base font-heading font-bold text-foreground mb-3">Add Note</h3>
+        <Label htmlFor="new-note" className="sr-only">New management note</Label>
         <textarea
+          id="new-note"
           value={newNote}
           onChange={(e) => setNewNote(e.target.value)}
           placeholder="Write a management note..."

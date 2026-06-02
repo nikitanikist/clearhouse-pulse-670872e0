@@ -56,7 +56,7 @@ const Section = ({
 const TextArea = ({ label, value }: { label: string; value: string }) => (
   <div className="py-3 border-b border-border last:border-0">
     <p className="text-xs font-medium text-muted-foreground mb-1.5">{label}</p>
-    <p className="text-sm text-foreground leading-relaxed whitespace-pre-line">{value || "—"}</p>
+    <p className="text-sm text-foreground leading-relaxed whitespace-pre-line max-w-[70ch]">{value || "—"}</p>
   </div>
 );
 

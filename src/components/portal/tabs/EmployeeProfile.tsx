@@ -4,6 +4,17 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import type { Employee, Position, Department, Location } from "@/data/employees";
 
 const positions: Position[] = ["Partner", "Manager", "Senior Associate", "Intermediate", "Associate", "Operations"];
@@ -15,7 +26,7 @@ const Field = ({ icon: Icon, label, value }: { icon: any; label: string; value: 
     <Icon className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
     <div>
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="text-sm font-medium text-foreground">{value}</p>
+      <p className="text-sm font-medium text-foreground">{value || "—"}</p>
     </div>
   </div>
 );
@@ -24,8 +35,10 @@ const EmployeeProfile = ({ employee }: { employee: Employee }) => {
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [local, setLocal] = useState(employee);
-  const [form, setForm] = useState({
+
+  const initialForm = {
     name: employee.name,
     position: employee.position,
     department: employee.department,
@@ -35,11 +48,13 @@ const EmployeeProfile = ({ employee }: { employee: Employee }) => {
     supervisor: employee.supervisor,
     email: employee.email,
     phone: employee.phone,
-  });
+  };
+  const [form, setForm] = useState(initialForm);
+  const [baseline, setBaseline] = useState(initialForm);
 
   useEffect(() => {
     setLocal(employee);
-    setForm({
+    const next = {
       name: employee.name,
       position: employee.position,
       department: employee.department,
@@ -49,21 +64,20 @@ const EmployeeProfile = ({ employee }: { employee: Employee }) => {
       supervisor: employee.supervisor,
       email: employee.email,
       phone: employee.phone,
-    });
+    };
+    setForm(next);
+    setBaseline(next);
   }, [employee]);
 
-  const cancel = () => {
-    setForm({
-      name: local.name,
-      position: local.position,
-      department: local.department,
-      location: local.location,
-      tenure_with_firm: local.tenure,
-      tenure_in_role: local.tenureInRole,
-      supervisor: local.supervisor,
-      email: local.email,
-      phone: local.phone,
-    });
+  const isDirty = JSON.stringify(form) !== JSON.stringify(baseline);
+
+  const requestCancel = () => {
+    if (isDirty) setConfirmDiscard(true);
+    else discard();
+  };
+  const discard = () => {
+    setForm(baseline);
+    setConfirmDiscard(false);
     setEditing(false);
   };
 
@@ -104,14 +118,15 @@ const EmployeeProfile = ({ employee }: { employee: Employee }) => {
       email: form.email,
       phone: form.phone,
     });
+    setBaseline(form);
     setEditing(false);
     toast.success("Profile updated");
     queryClient.invalidateQueries({ queryKey: ["employees"] });
     queryClient.invalidateQueries({ queryKey: ["employee", employee.id] });
   };
 
-  const labelCls = "block text-xs font-medium text-muted-foreground mb-1.5";
-  const selectCls = "w-full px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary";
+  const labelCls = "text-xs font-medium text-muted-foreground";
+  const selectCls = "mt-1.5 w-full px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary";
 
   return (
     <div className="bg-card rounded-lg shadow-sm border border-border p-6">
@@ -139,51 +154,51 @@ const EmployeeProfile = ({ employee }: { employee: Employee }) => {
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className={labelCls}>Full Name</label>
-              <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+              <Label htmlFor="ep-name" className={labelCls}>Full Name *</Label>
+              <Input id="ep-name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="mt-1.5" />
             </div>
             <div>
-              <label className={labelCls}>Position</label>
-              <select value={form.position} onChange={(e) => setForm({ ...form, position: e.target.value as Position })} className={selectCls}>
+              <Label htmlFor="ep-position" className={labelCls}>Position *</Label>
+              <select id="ep-position" value={form.position} onChange={(e) => setForm({ ...form, position: e.target.value as Position })} className={selectCls}>
                 {positions.map((p) => <option key={p} value={p}>{p}</option>)}
               </select>
             </div>
             <div>
-              <label className={labelCls}>Department</label>
-              <select value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value as Department })} className={selectCls}>
+              <Label htmlFor="ep-department" className={labelCls}>Department *</Label>
+              <select id="ep-department" value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value as Department })} className={selectCls}>
                 {departments.map((d) => <option key={d} value={d}>{d}</option>)}
               </select>
             </div>
             <div>
-              <label className={labelCls}>Location</label>
-              <select value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value as Location })} className={selectCls}>
+              <Label htmlFor="ep-location" className={labelCls}>Location *</Label>
+              <select id="ep-location" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value as Location })} className={selectCls}>
                 {locations.map((l) => <option key={l} value={l}>{l}</option>)}
               </select>
             </div>
             <div>
-              <label className={labelCls}>Tenure with Firm</label>
-              <Input value={form.tenure_with_firm} onChange={(e) => setForm({ ...form, tenure_with_firm: e.target.value })} />
+              <Label htmlFor="ep-tenure-firm" className={labelCls}>Tenure with Firm</Label>
+              <Input id="ep-tenure-firm" value={form.tenure_with_firm} onChange={(e) => setForm({ ...form, tenure_with_firm: e.target.value })} className="mt-1.5" />
             </div>
             <div>
-              <label className={labelCls}>Tenure in Current Role</label>
-              <Input value={form.tenure_in_role} onChange={(e) => setForm({ ...form, tenure_in_role: e.target.value })} />
+              <Label htmlFor="ep-tenure-role" className={labelCls}>Tenure in Current Role</Label>
+              <Input id="ep-tenure-role" value={form.tenure_in_role} onChange={(e) => setForm({ ...form, tenure_in_role: e.target.value })} className="mt-1.5" />
             </div>
             <div>
-              <label className={labelCls}>Supervisor / Manager</label>
-              <Input value={form.supervisor} onChange={(e) => setForm({ ...form, supervisor: e.target.value })} />
+              <Label htmlFor="ep-supervisor" className={labelCls}>Supervisor / Manager</Label>
+              <Input id="ep-supervisor" value={form.supervisor} onChange={(e) => setForm({ ...form, supervisor: e.target.value })} className="mt-1.5" />
             </div>
             <div>
-              <label className={labelCls}>Email</label>
-              <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+              <Label htmlFor="ep-email" className={labelCls}>Email</Label>
+              <Input id="ep-email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="mt-1.5" />
             </div>
             <div>
-              <label className={labelCls}>Phone</label>
-              <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+              <Label htmlFor="ep-phone" className={labelCls}>Phone</Label>
+              <Input id="ep-phone" type="tel" placeholder="+1 (555) 123-4567" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="mt-1.5" />
             </div>
           </div>
           <div className="flex justify-end gap-2 mt-6">
             <button
-              onClick={cancel}
+              onClick={requestCancel}
               disabled={saving}
               className="px-4 py-2 rounded-md border border-border text-sm font-medium hover:bg-muted transition-colors"
             >
@@ -198,6 +213,21 @@ const EmployeeProfile = ({ employee }: { employee: Employee }) => {
               Save changes
             </button>
           </div>
+
+          <AlertDialog open={confirmDiscard} onOpenChange={setConfirmDiscard}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Discard changes?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  You have unsaved edits to this profile. Closing now will lose them.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Keep editing</AlertDialogCancel>
+                <AlertDialogAction onClick={discard}>Discard</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-0 divide-y md:divide-y-0">
