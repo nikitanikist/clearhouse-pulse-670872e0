@@ -1,11 +1,16 @@
 import { useState, useMemo } from "react";
-import { Search, Filter, Plus, Loader2 } from "lucide-react";
+import { Search, Filter, Plus, Loader2, X } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { departmentColors, potentialColors, type Employee, type Department, type Location, type Position, type PotentialRating } from "@/data/employees";
+import type { CompetencyRating } from "@/types/database";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { RATING_LABELS, RATING_TO_NUMBER } from "@/lib/ratings";
 
 interface EmployeeDirectoryProps {
   employees: Employee[];
@@ -17,27 +22,40 @@ const locations: Location[] = ["Canada", "India"];
 const positions: Position[] = ["Partner", "Manager", "Senior Associate", "Intermediate", "Associate", "Operations"];
 const potentials: PotentialRating[] = ["Well Placed", "Ready Now", "Ready Soon", "Ready Later"];
 
-type RatingCode = "E" | "G" | "M" | "NI";
-
-const deriveRating = (score: number): RatingCode => {
+const deriveRating = (score: number | null): CompetencyRating | null => {
+  if (score === null) return null;
   if (score >= 4.5) return "E";
   if (score >= 3.5) return "G";
   if (score >= 2.5) return "M";
   return "NI";
 };
 
-const ratingStyles: Record<RatingCode, { bg: string; label: string }> = {
-  E: { bg: "bg-success text-success-foreground", label: "E" },
-  G: { bg: "bg-primary text-primary-foreground", label: "G" },
-  M: { bg: "bg-warning text-warning-foreground", label: "M" },
-  NI: { bg: "bg-destructive text-destructive-foreground", label: "NI" },
+const ratingStyles: Record<CompetencyRating, string> = {
+  E: "bg-success text-success-foreground",
+  G: "bg-primary text-primary-foreground",
+  M: "bg-warning text-warning-foreground",
+  NI: "bg-destructive text-destructive-foreground",
 };
 
-const RatingBadge = ({ code }: { code: RatingCode }) => (
-  <span className={`inline-flex items-center justify-center min-w-7 h-6 px-2 rounded text-xs font-bold ${ratingStyles[code].bg}`}>
-    {ratingStyles[code].label}
-  </span>
-);
+const RatingBadge = ({ code }: { code: CompetencyRating | null }) => {
+  if (code === null) {
+    return (
+      <span className="inline-flex items-center justify-center min-w-7 h-6 px-2 rounded text-xs font-medium text-muted-foreground bg-muted">
+        —
+      </span>
+    );
+  }
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className={`inline-flex items-center justify-center min-w-7 h-6 px-2 rounded text-xs font-bold cursor-help ${ratingStyles[code]}`}>
+          {code}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent>{code} — {RATING_LABELS[code]}</TooltipContent>
+    </Tooltip>
+  );
+};
 
 const EmployeeDirectory = ({ employees, onSelectEmployee }: EmployeeDirectoryProps) => {
   const [search, setSearch] = useState("");
@@ -81,13 +99,19 @@ const EmployeeDirectory = ({ employees, onSelectEmployee }: EmployeeDirectoryPro
     setSupervisorFilter("");
   };
 
+  const clearAll = () => {
+    setSearch("");
+    clearFilters();
+  };
+
   const activeFilters = [deptFilter, locFilter, posFilter, potFilter, ratingFilter, supervisorFilter].filter(Boolean);
   const hasActiveFilters = activeFilters.length > 0;
+  const hasAnyConstraint = hasActiveFilters || search.length > 0;
 
   const queryClient = useQueryClient();
   const [addOpen, setAddOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({
+  const initialForm = {
     name: "",
     position: "Associate" as Position,
     department: "Assurance" as Department,
@@ -97,26 +121,12 @@ const EmployeeDirectory = ({ employees, onSelectEmployee }: EmployeeDirectoryPro
     supervisor: "",
     tenure_with_firm: "",
     tenure_in_role: "",
-    current_year_rating: 0,
-    current_year_rating_code: "M" as RatingCode,
+    current_year_rating_code: "M" as CompetencyRating,
     potential_rating: "Well Placed" as PotentialRating,
-  });
+  };
+  const [form, setForm] = useState(initialForm);
 
-  const resetForm = () =>
-    setForm({
-      name: "",
-      position: "Associate",
-      department: "Assurance",
-      location: "Canada",
-      email: "",
-      phone: "",
-      supervisor: "",
-      tenure_with_firm: "",
-      tenure_in_role: "",
-      current_year_rating: 0,
-      current_year_rating_code: "M",
-      potential_rating: "Well Placed",
-    });
+  const resetForm = () => setForm(initialForm);
 
   const addEmployee = async () => {
     if (!form.name.trim()) {
@@ -134,7 +144,7 @@ const EmployeeDirectory = ({ employees, onSelectEmployee }: EmployeeDirectoryPro
       supervisor: form.supervisor.trim(),
       tenure_with_firm: form.tenure_with_firm.trim(),
       tenure_in_role: form.tenure_in_role.trim(),
-      current_year_rating: form.current_year_rating,
+      current_year_rating: RATING_TO_NUMBER[form.current_year_rating_code],
       current_year_rating_code: form.current_year_rating_code,
       potential_rating: form.potential_rating,
       bff_summary: "",
@@ -158,252 +168,261 @@ const EmployeeDirectory = ({ employees, onSelectEmployee }: EmployeeDirectoryPro
   };
 
   return (
-    <div className="flex-1 p-6 overflow-y-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-heading font-bold text-foreground">Employees</h1>
-          <Badge variant="secondary" className="text-xs font-medium">
-            {filtered.length} {filtered.length === 1 ? "person" : "people"}
-          </Badge>
+    <TooltipProvider>
+      <div className="flex-1 p-6 overflow-y-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-heading font-bold text-foreground">Employees</h1>
+            <Badge variant="secondary" className="text-xs font-medium">
+              {filtered.length} {filtered.length === 1 ? "person" : "people"}
+            </Badge>
+          </div>
+          <button
+            onClick={() => setAddOpen(true)}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors"
+          >
+            <Plus className="h-4 w-4" /> Add Employee
+          </button>
         </div>
-        <button
-          onClick={() => setAddOpen(true)}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors"
-        >
-          <Plus className="h-4 w-4" /> Add Employee
-        </button>
-      </div>
 
-
-      {/* Search + Filter Bar */}
-      <div className="flex items-center gap-3 mb-4">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            type="text"
-            placeholder="Search by name, position, department, supervisor..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
+        {/* Search + Filter Bar */}
+        <div className="flex items-center gap-3 mb-4">
+          <div className="relative flex-1 max-w-md">
+            <Label htmlFor="employee-search" className="sr-only">Search employees</Label>
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              id="employee-search"
+              type="search"
+              placeholder="Search by name, position, department, supervisor..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9 pr-9"
+            />
+            {search && (
+              <button
+                onClick={() => setSearch("")}
+                aria-label="Clear search"
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+          <button
+            onClick={() => setFiltersOpen(!filtersOpen)}
+            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md border transition-colors ${
+              filtersOpen || hasActiveFilters
+                ? "bg-primary/10 border-primary/30 text-primary"
+                : "bg-card border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"
+            }`}
+          >
+            <Filter className="h-4 w-4" />
+            Filters
+            {hasActiveFilters && (
+              <span className="ml-1 w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center">
+                {activeFilters.length}
+              </span>
+            )}
+          </button>
         </div>
-        <button
-          onClick={() => setFiltersOpen(!filtersOpen)}
-          className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md border transition-colors ${
-            filtersOpen || hasActiveFilters
-              ? "bg-primary/10 border-primary/30 text-primary"
-              : "bg-card border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"
-          }`}
-        >
-          <Filter className="h-4 w-4" />
-          Filters
-          {hasActiveFilters && (
-            <span className="ml-1 w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center">
-              {activeFilters.length}
-            </span>
-          )}
-        </button>
-      </div>
 
-      {/* Filter Dropdowns */}
-      {filtersOpen && (
-        <div className="flex flex-wrap items-center gap-3 mb-4 p-4 bg-muted/50 rounded-lg border border-border">
-          {[
-            { label: "Department", value: deptFilter, setter: setDeptFilter, options: departments as readonly string[] },
-            { label: "Location", value: locFilter, setter: setLocFilter, options: locations as readonly string[] },
-            { label: "Position", value: posFilter, setter: setPosFilter, options: positions as readonly string[] },
-            { label: "Potential", value: potFilter, setter: setPotFilter, options: potentials as readonly string[] },
-            { label: "Supervisor", value: supervisorFilter, setter: setSupervisorFilter, options: supervisors },
-          ].map((f) => (
+        {/* Filter Dropdowns */}
+        {filtersOpen && (
+          <div className="flex flex-wrap items-center gap-3 mb-4 p-4 bg-muted/50 rounded-lg border border-border">
+            {[
+              { label: "Department", value: deptFilter, setter: setDeptFilter, options: departments as readonly string[] },
+              { label: "Location", value: locFilter, setter: setLocFilter, options: locations as readonly string[] },
+              { label: "Position", value: posFilter, setter: setPosFilter, options: positions as readonly string[] },
+              { label: "Potential", value: potFilter, setter: setPotFilter, options: potentials as readonly string[] },
+              { label: "Supervisor", value: supervisorFilter, setter: setSupervisorFilter, options: supervisors },
+            ].map((f) => (
+              <select
+                key={f.label}
+                value={f.value}
+                onChange={(e) => f.setter(e.target.value)}
+                className="py-2 px-3 rounded-md bg-background text-foreground text-sm border border-border focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="">{f.label}: All</option>
+                {f.options.map((o) => (
+                  <option key={o} value={o}>{o}</option>
+                ))}
+              </select>
+            ))}
             <select
-              key={f.label}
-              value={f.value}
-              onChange={(e) => f.setter(e.target.value)}
+              value={ratingFilter}
+              onChange={(e) => setRatingFilter(e.target.value)}
               className="py-2 px-3 rounded-md bg-background text-foreground text-sm border border-border focus:outline-none focus:ring-2 focus:ring-ring"
             >
-              <option value="">{f.label}: All</option>
-              {f.options.map((o) => (
-                <option key={o} value={o}>{o}</option>
-              ))}
+              <option value="">Current Rating: All</option>
+              <option value="E">E — Excellent</option>
+              <option value="G">G — Good</option>
+              <option value="M">M — Meets</option>
+              <option value="NI">NI — Needs Improvement</option>
             </select>
-          ))}
-          <select
-            value={ratingFilter}
-            onChange={(e) => setRatingFilter(e.target.value)}
-            className="py-2 px-3 rounded-md bg-background text-foreground text-sm border border-border focus:outline-none focus:ring-2 focus:ring-ring"
-          >
-            <option value="">Current Rating: All</option>
-            <option value="E">E — Excellent</option>
-            <option value="G">G — Good</option>
-            <option value="M">M — Meets</option>
-            <option value="NI">NI — Needs Improvement</option>
-          </select>
-          {hasActiveFilters && (
-            <button
-              onClick={clearFilters}
-              className="text-xs text-muted-foreground hover:text-foreground underline"
-            >
-              Clear all
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Table */}
-      <div className="bg-card rounded-lg border border-border overflow-hidden">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-border bg-muted/30">
-              <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Employee</th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Position</th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Department</th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Location</th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Rating</th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Potential</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {filtered.map((emp) => (
-              <tr
-                key={emp.id}
-                onClick={() => onSelectEmployee(emp)}
-                className="hover:bg-muted/40 cursor-pointer transition-colors"
+            {hasActiveFilters && (
+              <button
+                onClick={clearFilters}
+                className="text-xs text-muted-foreground hover:text-foreground underline"
               >
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-sm flex-shrink-0">
-                      {emp.initials}
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-foreground">{emp.name}</p>
-                      <p className="text-xs text-muted-foreground">{emp.email}</p>
-                    </div>
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-sm text-foreground">{emp.position}</td>
-                <td className="px-4 py-3">
-                  <span className={`inline-block text-xs font-medium px-2.5 py-1 rounded-full ${departmentColors[emp.department]}`}>
-                    {emp.department}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-sm text-muted-foreground">{emp.location}</td>
-                <td className="px-4 py-3">
-                  <RatingBadge code={deriveRating(emp.currentYearRating)} />
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full ${potentialColors[emp.potential]}`} />
-                    <span className="text-sm text-foreground">{emp.potential}</span>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {filtered.length === 0 && (
-          <div className="py-12 text-center">
-            <p className="text-sm text-muted-foreground">No employees match your filters.</p>
+                Clear all
+              </button>
+            )}
           </div>
         )}
-      </div>
 
-      {addOpen && (
-        <div
-          className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
-          onClick={() => !saving && setAddOpen(false)}
-        >
-          <div
-            className="bg-card rounded-lg shadow-lg w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="text-lg font-heading font-bold text-foreground mb-4">Add Employee</h3>
+        {/* Rating legend */}
+        <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          <span className="font-medium text-foreground">Rating key:</span>
+          {(Object.keys(RATING_LABELS) as CompetencyRating[]).map((c) => (
+            <span key={c} className="inline-flex items-center gap-1.5">
+              <span className={`inline-flex items-center justify-center min-w-6 h-5 px-1.5 rounded text-[10px] font-bold ${ratingStyles[c]}`}>{c}</span>
+              {RATING_LABELS[c]}
+            </span>
+          ))}
+          <span className="inline-flex items-center gap-1.5">
+            <span className="inline-flex items-center justify-center min-w-6 h-5 px-1.5 rounded text-[10px] font-medium text-muted-foreground bg-muted">—</span>
+            Unrated
+          </span>
+        </div>
+
+        {/* Table */}
+        <div className="bg-card rounded-lg border border-border overflow-hidden">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-border bg-muted/30">
+                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Employee</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Position</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Department</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Location</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Rating</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Potential</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {filtered.map((emp) => (
+                <tr
+                  key={emp.id}
+                  onClick={() => onSelectEmployee(emp)}
+                  className="hover:bg-muted/40 cursor-pointer transition-colors"
+                >
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-sm flex-shrink-0">
+                        {emp.initials}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-foreground">{emp.name}</p>
+                        <p className="text-xs text-muted-foreground">{emp.email}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-foreground">{emp.position}</td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-block text-xs font-medium px-2.5 py-1 rounded-full ${departmentColors[emp.department]}`}>
+                      {emp.department}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-muted-foreground">{emp.location}</td>
+                  <td className="px-4 py-3">
+                    <RatingBadge code={deriveRating(emp.currentYearRating)} />
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <span className={`w-2 h-2 rounded-full ${potentialColors[emp.potential]}`} />
+                      <span className="text-sm text-foreground">{emp.potential}</span>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {filtered.length === 0 && (
+            <div className="py-12 text-center flex flex-col items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                <Search className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <p className="text-sm text-muted-foreground">No employees match your search.</p>
+              {hasAnyConstraint && (
+                <button
+                  onClick={clearAll}
+                  className="text-sm font-medium text-primary hover:text-primary/80 underline"
+                >
+                  Clear search and filters
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Add Employee Dialog */}
+        <Dialog open={addOpen} onOpenChange={(o) => { if (!saving) { setAddOpen(o); if (!o) resetForm(); } }}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Add Employee</DialogTitle>
+            </DialogHeader>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
-                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Name *</label>
-                <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+                <Label htmlFor="emp-name" className="text-xs text-muted-foreground">Name *</Label>
+                <Input id="emp-name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="mt-1.5" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Position *</label>
-                <select
-                  value={form.position}
-                  onChange={(e) => setForm({ ...form, position: e.target.value as Position })}
-                  className="w-full px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                >
+                <Label htmlFor="emp-position" className="text-xs text-muted-foreground">Position *</Label>
+                <select id="emp-position" required value={form.position} onChange={(e) => setForm({ ...form, position: e.target.value as Position })} className="mt-1.5 w-full px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary">
                   {positions.map((p) => <option key={p} value={p}>{p}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Department *</label>
-                <select
-                  value={form.department}
-                  onChange={(e) => setForm({ ...form, department: e.target.value as Department })}
-                  className="w-full px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                >
+                <Label htmlFor="emp-department" className="text-xs text-muted-foreground">Department *</Label>
+                <select id="emp-department" required value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value as Department })} className="mt-1.5 w-full px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary">
                   {departments.map((d) => <option key={d} value={d}>{d}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Location *</label>
-                <select
-                  value={form.location}
-                  onChange={(e) => setForm({ ...form, location: e.target.value as Location })}
-                  className="w-full px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                >
+                <Label htmlFor="emp-location" className="text-xs text-muted-foreground">Location *</Label>
+                <select id="emp-location" required value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value as Location })} className="mt-1.5 w-full px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary">
                   {locations.map((l) => <option key={l} value={l}>{l}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Supervisor</label>
-                <Input value={form.supervisor} onChange={(e) => setForm({ ...form, supervisor: e.target.value })} />
+                <Label htmlFor="emp-supervisor" className="text-xs text-muted-foreground">Supervisor</Label>
+                <Input id="emp-supervisor" value={form.supervisor} onChange={(e) => setForm({ ...form, supervisor: e.target.value })} className="mt-1.5" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Email</label>
-                <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+                <Label htmlFor="emp-email" className="text-xs text-muted-foreground">Email</Label>
+                <Input id="emp-email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="mt-1.5" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Phone</label>
-                <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+                <Label htmlFor="emp-phone" className="text-xs text-muted-foreground">Phone</Label>
+                <Input id="emp-phone" type="tel" placeholder="+1 (555) 123-4567" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="mt-1.5" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Tenure with Firm</label>
-                <Input placeholder="e.g. 2 years, 3 months" value={form.tenure_with_firm} onChange={(e) => setForm({ ...form, tenure_with_firm: e.target.value })} />
+                <Label htmlFor="emp-tenure-firm" className="text-xs text-muted-foreground">Tenure with Firm</Label>
+                <Input id="emp-tenure-firm" placeholder="e.g. 2 years, 3 months" value={form.tenure_with_firm} onChange={(e) => setForm({ ...form, tenure_with_firm: e.target.value })} className="mt-1.5" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Tenure in Role</label>
-                <Input value={form.tenure_in_role} onChange={(e) => setForm({ ...form, tenure_in_role: e.target.value })} />
+                <Label htmlFor="emp-tenure-role" className="text-xs text-muted-foreground">Tenure in Role</Label>
+                <Input id="emp-tenure-role" placeholder="e.g. 1 year, 2 months" value={form.tenure_in_role} onChange={(e) => setForm({ ...form, tenure_in_role: e.target.value })} className="mt-1.5" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Current Year Rating (0–5)</label>
-                <Input type="number" min={0} max={5} step={0.1} value={form.current_year_rating} onChange={(e) => setForm({ ...form, current_year_rating: Number(e.target.value) })} />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Rating Code</label>
-                <select
-                  value={form.current_year_rating_code}
-                  onChange={(e) => setForm({ ...form, current_year_rating_code: e.target.value as RatingCode })}
-                  className="w-full px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                >
+                <Label htmlFor="emp-rating-code" className="text-xs text-muted-foreground">Current Year Rating</Label>
+                <select id="emp-rating-code" value={form.current_year_rating_code} onChange={(e) => setForm({ ...form, current_year_rating_code: e.target.value as CompetencyRating })} className="mt-1.5 w-full px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary">
                   <option value="E">E — Excellent</option>
                   <option value="G">G — Good</option>
                   <option value="M">M — Meets</option>
                   <option value="NI">NI — Needs Improvement</option>
                 </select>
               </div>
-              <div className="md:col-span-2">
-                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Potential Rating</label>
-                <select
-                  value={form.potential_rating}
-                  onChange={(e) => setForm({ ...form, potential_rating: e.target.value as PotentialRating })}
-                  className="w-full px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                >
+              <div>
+                <Label htmlFor="emp-potential" className="text-xs text-muted-foreground">Potential Rating</Label>
+                <select id="emp-potential" value={form.potential_rating} onChange={(e) => setForm({ ...form, potential_rating: e.target.value as PotentialRating })} className="mt-1.5 w-full px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary">
                   {potentials.map((p) => <option key={p} value={p}>{p}</option>)}
                 </select>
               </div>
             </div>
-            <div className="flex justify-end gap-2 mt-6">
+            <DialogFooter>
               <button
-                onClick={() => setAddOpen(false)}
+                onClick={() => { setAddOpen(false); resetForm(); }}
                 disabled={saving}
                 className="px-4 py-2 rounded-md border border-border text-sm font-medium hover:bg-muted transition-colors"
               >
@@ -417,11 +436,11 @@ const EmployeeDirectory = ({ employees, onSelectEmployee }: EmployeeDirectoryPro
                 {saving && <Loader2 className="h-4 w-4 animate-spin" />}
                 Add Employee
               </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </TooltipProvider>
   );
 };
 
