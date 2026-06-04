@@ -128,6 +128,9 @@ const InterpersonalSkills = ({ employeeId }: { employeeId: string }) => {
                 </div>
               </div>
               <p className="text-sm text-muted-foreground leading-relaxed">{s.assessment_text}</p>
+              {s.updated_at && (
+                <p className="text-xs text-muted-foreground mt-3">Last updated {formatDateLong(s.updated_at)}</p>
+              )}
             </div>
           ))}
         </div>
