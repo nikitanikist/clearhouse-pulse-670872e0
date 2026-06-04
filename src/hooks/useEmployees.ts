@@ -30,6 +30,8 @@ export const rowToEmployee = (r: EmployeeRow): Employee => ({
   phone: r.phone,
   tenure: r.tenure_with_firm,
   tenureInRole: r.tenure_in_role,
+  joiningDate: (r as EmployeeRow & { joining_date: string | null }).joining_date ?? null,
+  roleStartDate: (r as EmployeeRow & { role_start_date: string | null }).role_start_date ?? null,
   supervisor: r.supervisor,
   currentYearRating: r.current_year_rating === null ? null : Number(r.current_year_rating),
   previousYearRating: 0,

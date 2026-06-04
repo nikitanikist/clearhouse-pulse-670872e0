@@ -50,6 +50,8 @@ export interface EmployeeRow {
   location: Location;
   tenure_with_firm: string;
   tenure_in_role: string;
+  joining_date: string | null;
+  role_start_date: string | null;
   supervisor: string;
   email: string;
   phone: string;
