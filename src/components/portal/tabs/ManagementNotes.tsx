@@ -24,6 +24,14 @@ const formatDate = (iso: string) => {
   }
 };
 
+const formatEdited = (iso: string) => {
+  try {
+    return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  } catch {
+    return iso;
+  }
+};
+
 const ManagementNotes = ({ employeeId, authorName }: ManagementNotesProps) => {
   const { data: notes = [], isLoading } = useManagementNotes(employeeId);
   const queryClient = useQueryClient();
