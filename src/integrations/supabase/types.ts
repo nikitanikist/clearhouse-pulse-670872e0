@@ -125,6 +125,7 @@ export type Database = {
           email: string
           growth_rationale: string
           id: string
+          joining_date: string | null
           location: Database["public"]["Enums"]["employee_location"]
           name: string
           performance_summary: string
@@ -133,6 +134,7 @@ export type Database = {
           phone: string
           position: Database["public"]["Enums"]["employee_position"]
           potential_rating: Database["public"]["Enums"]["potential_rating"]
+          role_start_date: string | null
           supervisor: string
           tenure_in_role: string
           tenure_with_firm: string
@@ -149,6 +151,7 @@ export type Database = {
           email: string
           growth_rationale?: string
           id?: string
+          joining_date?: string | null
           location: Database["public"]["Enums"]["employee_location"]
           name: string
           performance_summary?: string
@@ -157,6 +160,7 @@ export type Database = {
           phone?: string
           position: Database["public"]["Enums"]["employee_position"]
           potential_rating?: Database["public"]["Enums"]["potential_rating"]
+          role_start_date?: string | null
           supervisor?: string
           tenure_in_role?: string
           tenure_with_firm?: string
@@ -173,6 +177,7 @@ export type Database = {
           email?: string
           growth_rationale?: string
           id?: string
+          joining_date?: string | null
           location?: Database["public"]["Enums"]["employee_location"]
           name?: string
           performance_summary?: string
@@ -181,6 +186,7 @@ export type Database = {
           phone?: string
           position?: Database["public"]["Enums"]["employee_position"]
           potential_rating?: Database["public"]["Enums"]["potential_rating"]
+          role_start_date?: string | null
           supervisor?: string
           tenure_in_role?: string
           tenure_with_firm?: string
