@@ -15,6 +15,7 @@ import { ArrowLeft } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEmployees } from "@/hooks/useEmployees";
 import SettingsView from "@/components/portal/SettingsView";
+import ReportsView from "@/components/portal/ReportsView";
 
 
 const tabs = [
