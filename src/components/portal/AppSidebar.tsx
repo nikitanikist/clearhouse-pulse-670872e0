@@ -1,7 +1,7 @@
-import { LayoutDashboard, Users, Building2, Settings, LogOut } from "lucide-react";
+import { LayoutDashboard, Users, Building2, BarChart3, Settings, LogOut } from "lucide-react";
 import type { SecurityLevel } from "@/data/employees";
 
-export type NavSection = "dashboard" | "employees" | "teams" | "settings";
+export type NavSection = "dashboard" | "employees" | "teams" | "reports" | "settings";
 
 const securityLabels: Record<SecurityLevel, string> = {
   1: "Level 1: Full Access",
@@ -23,6 +23,7 @@ const navItems: { id: NavSection; label: string; icon: React.ElementType }[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "employees", label: "Employees", icon: Users },
   { id: "teams", label: "Teams", icon: Building2 },
+  { id: "reports", label: "Reports", icon: BarChart3 },
   { id: "settings", label: "Settings", icon: Settings },
 ];
 
