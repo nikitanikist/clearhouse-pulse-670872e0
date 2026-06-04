@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { RATING_LABELS, RATING_TO_NUMBER } from "@/lib/ratings";
+import SupervisorCombobox from "./SupervisorCombobox";
 
 interface EmployeeDirectoryProps {
   employees: Employee[];
@@ -119,8 +120,8 @@ const EmployeeDirectory = ({ employees, onSelectEmployee }: EmployeeDirectoryPro
     email: "",
     phone: "",
     supervisor: "",
-    tenure_with_firm: "",
-    tenure_in_role: "",
+    joining_date: "",
+    role_start_date: "",
     current_year_rating_code: "M" as CompetencyRating,
     potential_rating: "Well Placed" as PotentialRating,
   };
@@ -142,8 +143,10 @@ const EmployeeDirectory = ({ employees, onSelectEmployee }: EmployeeDirectoryPro
       email: form.email.trim(),
       phone: form.phone.trim(),
       supervisor: form.supervisor.trim(),
-      tenure_with_firm: form.tenure_with_firm.trim(),
-      tenure_in_role: form.tenure_in_role.trim(),
+      tenure_with_firm: "",
+      tenure_in_role: "",
+      joining_date: form.joining_date || null,
+      role_start_date: form.role_start_date || null,
       current_year_rating: RATING_TO_NUMBER[form.current_year_rating_code],
       current_year_rating_code: form.current_year_rating_code,
       potential_rating: form.potential_rating,
@@ -384,9 +387,14 @@ const EmployeeDirectory = ({ employees, onSelectEmployee }: EmployeeDirectoryPro
                   {locations.map((l) => <option key={l} value={l}>{l}</option>)}
                 </select>
               </div>
-              <div>
+              <div className="md:col-span-2">
                 <Label htmlFor="emp-supervisor" className="text-xs text-muted-foreground">Supervisor</Label>
-                <Input id="emp-supervisor" value={form.supervisor} onChange={(e) => setForm({ ...form, supervisor: e.target.value })} className="mt-1.5" />
+                <SupervisorCombobox
+                  id="emp-supervisor"
+                  value={form.supervisor}
+                  onChange={(v) => setForm({ ...form, supervisor: v })}
+                  employees={employees}
+                />
               </div>
               <div>
                 <Label htmlFor="emp-email" className="text-xs text-muted-foreground">Email</Label>
@@ -397,12 +405,12 @@ const EmployeeDirectory = ({ employees, onSelectEmployee }: EmployeeDirectoryPro
                 <Input id="emp-phone" type="tel" placeholder="+1 (555) 123-4567" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="mt-1.5" />
               </div>
               <div>
-                <Label htmlFor="emp-tenure-firm" className="text-xs text-muted-foreground">Tenure with Firm</Label>
-                <Input id="emp-tenure-firm" placeholder="e.g. 2 years, 3 months" value={form.tenure_with_firm} onChange={(e) => setForm({ ...form, tenure_with_firm: e.target.value })} className="mt-1.5" />
+                <Label htmlFor="emp-joining-date" className="text-xs text-muted-foreground">Joining Date</Label>
+                <Input id="emp-joining-date" type="date" value={form.joining_date} onChange={(e) => setForm({ ...form, joining_date: e.target.value })} className="mt-1.5" />
               </div>
               <div>
-                <Label htmlFor="emp-tenure-role" className="text-xs text-muted-foreground">Tenure in Role</Label>
-                <Input id="emp-tenure-role" placeholder="e.g. 1 year, 2 months" value={form.tenure_in_role} onChange={(e) => setForm({ ...form, tenure_in_role: e.target.value })} className="mt-1.5" />
+                <Label htmlFor="emp-role-start" className="text-xs text-muted-foreground">Role Start Date</Label>
+                <Input id="emp-role-start" type="date" value={form.role_start_date} onChange={(e) => setForm({ ...form, role_start_date: e.target.value })} className="mt-1.5" />
               </div>
               <div>
                 <Label htmlFor="emp-rating-code" className="text-xs text-muted-foreground">Current Year Rating</Label>

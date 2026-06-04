@@ -18,6 +18,10 @@ export interface Employee {
   phone: string;
   tenure: string;
   tenureInRole: string;
+  /** ISO date (yyyy-mm-dd) or null. When present, drives the tenure display. */
+  joiningDate: string | null;
+  /** ISO date (yyyy-mm-dd) or null. When present, drives the role-tenure display. */
+  roleStartDate: string | null;
   supervisor: string;
   /** Null when the employee has not yet been rated. */
   currentYearRating: number | null;

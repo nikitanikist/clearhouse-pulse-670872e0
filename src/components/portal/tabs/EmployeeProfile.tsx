@@ -16,6 +16,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import type { Employee, Position, Department, Location } from "@/data/employees";
+import { useEmployees } from "@/hooks/useEmployees";
+import SupervisorCombobox from "../SupervisorCombobox";
+import { formatTenure, formatDateLong } from "@/lib/tenure";
 
 const positions: Position[] = ["Partner", "Manager", "Senior Associate", "Intermediate", "Associate", "Operations"];
 const departments: Department[] = ["Assurance", "Tax", "Advisory", "Operations"];
@@ -33,38 +36,29 @@ const Field = ({ icon: Icon, label, value }: { icon: any; label: string; value: 
 
 const EmployeeProfile = ({ employee }: { employee: Employee }) => {
   const queryClient = useQueryClient();
+  const { data: allEmployees = [] } = useEmployees();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [local, setLocal] = useState(employee);
 
-  const initialForm = {
-    name: employee.name,
-    position: employee.position,
-    department: employee.department,
-    location: employee.location,
-    tenure_with_firm: employee.tenure,
-    tenure_in_role: employee.tenureInRole,
-    supervisor: employee.supervisor,
-    email: employee.email,
-    phone: employee.phone,
-  };
-  const [form, setForm] = useState(initialForm);
-  const [baseline, setBaseline] = useState(initialForm);
+  const buildInitialForm = (e: Employee) => ({
+    name: e.name,
+    position: e.position,
+    department: e.department,
+    location: e.location,
+    joining_date: e.joiningDate ?? "",
+    role_start_date: e.roleStartDate ?? "",
+    supervisor: e.supervisor,
+    email: e.email,
+    phone: e.phone,
+  });
+  const [form, setForm] = useState(buildInitialForm(employee));
+  const [baseline, setBaseline] = useState(buildInitialForm(employee));
 
   useEffect(() => {
     setLocal(employee);
-    const next = {
-      name: employee.name,
-      position: employee.position,
-      department: employee.department,
-      location: employee.location,
-      tenure_with_firm: employee.tenure,
-      tenure_in_role: employee.tenureInRole,
-      supervisor: employee.supervisor,
-      email: employee.email,
-      phone: employee.phone,
-    };
+    const next = buildInitialForm(employee);
     setForm(next);
     setBaseline(next);
   }, [employee]);
@@ -94,8 +88,8 @@ const EmployeeProfile = ({ employee }: { employee: Employee }) => {
         position: form.position,
         department: form.department,
         location: form.location,
-        tenure_with_firm: form.tenure_with_firm,
-        tenure_in_role: form.tenure_in_role,
+        joining_date: form.joining_date || null,
+        role_start_date: form.role_start_date || null,
         supervisor: form.supervisor,
         email: form.email,
         phone: form.phone,
@@ -112,8 +106,8 @@ const EmployeeProfile = ({ employee }: { employee: Employee }) => {
       position: form.position,
       department: form.department,
       location: form.location,
-      tenure: form.tenure_with_firm,
-      tenureInRole: form.tenure_in_role,
+      joiningDate: form.joining_date || null,
+      roleStartDate: form.role_start_date || null,
       supervisor: form.supervisor,
       email: form.email,
       phone: form.phone,
@@ -127,6 +121,9 @@ const EmployeeProfile = ({ employee }: { employee: Employee }) => {
 
   const labelCls = "text-xs font-medium text-muted-foreground";
   const selectCls = "mt-1.5 w-full px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary";
+
+  const tenureDisplay = formatTenure(local.joiningDate, local.tenure);
+  const roleTenureDisplay = formatTenure(local.roleStartDate, local.tenureInRole);
 
   return (
     <div className="bg-card rounded-lg shadow-sm border border-border p-6">
@@ -176,16 +173,22 @@ const EmployeeProfile = ({ employee }: { employee: Employee }) => {
               </select>
             </div>
             <div>
-              <Label htmlFor="ep-tenure-firm" className={labelCls}>Tenure with Firm</Label>
-              <Input id="ep-tenure-firm" value={form.tenure_with_firm} onChange={(e) => setForm({ ...form, tenure_with_firm: e.target.value })} className="mt-1.5" />
+              <Label htmlFor="ep-joining-date" className={labelCls}>Joining Date</Label>
+              <Input id="ep-joining-date" type="date" value={form.joining_date} onChange={(e) => setForm({ ...form, joining_date: e.target.value })} className="mt-1.5" />
             </div>
             <div>
-              <Label htmlFor="ep-tenure-role" className={labelCls}>Tenure in Current Role</Label>
-              <Input id="ep-tenure-role" value={form.tenure_in_role} onChange={(e) => setForm({ ...form, tenure_in_role: e.target.value })} className="mt-1.5" />
+              <Label htmlFor="ep-role-start" className={labelCls}>Role Start Date</Label>
+              <Input id="ep-role-start" type="date" value={form.role_start_date} onChange={(e) => setForm({ ...form, role_start_date: e.target.value })} className="mt-1.5" />
             </div>
-            <div>
+            <div className="md:col-span-2">
               <Label htmlFor="ep-supervisor" className={labelCls}>Supervisor / Manager</Label>
-              <Input id="ep-supervisor" value={form.supervisor} onChange={(e) => setForm({ ...form, supervisor: e.target.value })} className="mt-1.5" />
+              <SupervisorCombobox
+                id="ep-supervisor"
+                value={form.supervisor}
+                onChange={(v) => setForm({ ...form, supervisor: v })}
+                employees={allEmployees}
+                excludeId={employee.id}
+              />
             </div>
             <div>
               <Label htmlFor="ep-email" className={labelCls}>Email</Label>
@@ -236,10 +239,16 @@ const EmployeeProfile = ({ employee }: { employee: Employee }) => {
             <Field icon={Briefcase} label="Position" value={local.position} />
             <Field icon={Building2} label="Department" value={local.department} />
             <Field icon={MapPin} label="Location" value={local.location} />
-            <Field icon={Calendar} label="Tenure with Firm" value={local.tenure} />
+            {local.joiningDate && (
+              <Field icon={Calendar} label="Joining Date" value={formatDateLong(local.joiningDate)} />
+            )}
+            <Field icon={Calendar} label="Tenure with Firm" value={tenureDisplay} />
           </div>
           <div className="space-y-0 divide-y divide-border">
-            <Field icon={Calendar} label="Tenure in Current Role" value={local.tenureInRole} />
+            {local.roleStartDate && (
+              <Field icon={Calendar} label="Role Start Date" value={formatDateLong(local.roleStartDate)} />
+            )}
+            <Field icon={Calendar} label="Tenure in Current Role" value={roleTenureDisplay} />
             <Field icon={Users} label="Supervisor / Manager" value={local.supervisor} />
             <Field icon={Mail} label="Email" value={local.email} />
             <Field icon={Phone} label="Phone" value={local.phone} />
