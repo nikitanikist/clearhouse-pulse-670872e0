@@ -5,6 +5,7 @@ import { useEmployeeInterpersonal } from "@/hooks/useEmployees";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import type { InterpersonalArea, InterpersonalRow } from "@/types/database";
+import { formatDateLong } from "@/lib/tenure";
 
 const SKILL_AREAS: InterpersonalArea[] = [
   "Client Communication",
