@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { ChevronDown, ChevronRight, Download, Trash2, Eye, Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ChevronDown, ChevronRight, Download, Trash2, Eye, Loader2, Pencil } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { Employee } from "@/data/employees";
@@ -9,11 +9,14 @@ import {
   useEmployeeDevPlan,
   usePdrDocuments,
 } from "@/hooks/useEmployees";
-import type { CompetencyRating } from "@/types/database";
+import type { CompetencyRating, CoreCompetencyRow } from "@/types/database";
 import { supabase } from "@/lib/supabase";
 import PdrUploader from "@/components/portal/pdr/PdrUploader";
 import PdrReviewDialog from "@/components/portal/pdr/PdrReviewDialog";
 import type { ParsedPdr } from "@/lib/pdr/types";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { formatDateLong } from "@/lib/tenure";
 
 interface OverviewProps {
   employee: Employee;
@@ -67,6 +70,8 @@ const ratingConfig: Record<CompetencyRating, { label: string; color: string; bg:
   NI: { label: "Needs Improvement", color: "text-white", bg: "bg-[#EF4444]" },
 };
 
+const RATING_CODES: CompetencyRating[] = ["E", "G", "M", "NI"];
+
 const RatingBadge = ({ code }: { code: CompetencyRating }) => {
   const cfg = ratingConfig[code];
   return (
@@ -85,10 +90,262 @@ const formatBytes = (n: number) => {
 const formatDate = (iso: string) =>
   new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
+// ---------- Edit Performance dialog ----------
+const EditPerformanceDialog = ({
+  open,
+  onOpenChange,
+  employeeId,
+  initial,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  employeeId: string;
+  initial: {
+    current_year_rating_code: CompetencyRating;
+    current_year_rating: number | null;
+    performance_what_went_well: string;
+    performance_what_could_go_better: string;
+    performance_summary: string;
+  };
+}) => {
+  const qc = useQueryClient();
+  const [code, setCode] = useState<CompetencyRating>(initial.current_year_rating_code);
+  const [rating, setRating] = useState<string>(
+    initial.current_year_rating === null ? "" : String(initial.current_year_rating),
+  );
+  const [went, setWent] = useState(initial.performance_what_went_well);
+  const [better, setBetter] = useState(initial.performance_what_could_go_better);
+  const [summary, setSummary] = useState(initial.performance_summary);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setCode(initial.current_year_rating_code);
+      setRating(initial.current_year_rating === null ? "" : String(initial.current_year_rating));
+      setWent(initial.performance_what_went_well);
+      setBetter(initial.performance_what_could_go_better);
+      setSummary(initial.performance_summary);
+    }
+  }, [open, initial]);
+
+  const save = async () => {
+    setSaving(true);
+    const num = rating.trim() === "" ? null : Number(rating);
+    if (num !== null && (Number.isNaN(num) || num < 0 || num > 5)) {
+      setSaving(false);
+      toast.error("Rating must be between 0 and 5");
+      return;
+    }
+    const { error } = await supabase
+      .from("employees")
+      .update({
+        current_year_rating_code: code,
+        current_year_rating: num,
+        performance_what_went_well: went,
+        performance_what_could_go_better: better,
+        performance_summary: summary,
+        performance_updated_at: new Date().toISOString(),
+      } as never)
+      .eq("id", employeeId);
+    setSaving(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Performance updated");
+    qc.invalidateQueries({ queryKey: ["employee", employeeId] });
+    qc.invalidateQueries({ queryKey: ["employees"] });
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Edit performance</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="perf-code" className="text-xs font-medium text-muted-foreground">Rating code</Label>
+              <select
+                id="perf-code"
+                value={code}
+                onChange={(e) => setCode(e.target.value as CompetencyRating)}
+                className="mt-1.5 w-full px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                {RATING_CODES.map((c) => (
+                  <option key={c} value={c}>{c} — {ratingConfig[c].label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <Label htmlFor="perf-rating" className="text-xs font-medium text-muted-foreground">Rating (0-5)</Label>
+              <input
+                id="perf-rating"
+                type="number"
+                min={0}
+                max={5}
+                step={0.1}
+                value={rating}
+                onChange={(e) => setRating(e.target.value)}
+                className="mt-1.5 w-full px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+          </div>
+          <div>
+            <Label htmlFor="perf-went" className="text-xs font-medium text-muted-foreground">What has gone well</Label>
+            <textarea
+              id="perf-went"
+              value={went}
+              onChange={(e) => setWent(e.target.value)}
+              rows={3}
+              className="mt-1.5 w-full px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-y"
+            />
+          </div>
+          <div>
+            <Label htmlFor="perf-better" className="text-xs font-medium text-muted-foreground">What could have gone better</Label>
+            <textarea
+              id="perf-better"
+              value={better}
+              onChange={(e) => setBetter(e.target.value)}
+              rows={3}
+              className="mt-1.5 w-full px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-y"
+            />
+          </div>
+          <div>
+            <Label htmlFor="perf-summary" className="text-xs font-medium text-muted-foreground">Summary of overall performance</Label>
+            <textarea
+              id="perf-summary"
+              value={summary}
+              onChange={(e) => setSummary(e.target.value)}
+              rows={3}
+              className="mt-1.5 w-full px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-y"
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <button
+            onClick={() => onOpenChange(false)}
+            disabled={saving}
+            className="px-4 py-2 rounded-md border border-input bg-background text-sm font-medium hover:bg-muted transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={save}
+            disabled={saving}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
+          >
+            {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+            Save
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// ---------- Edit Competency dialog ----------
+const EditCompetencyDialog = ({
+  open,
+  onOpenChange,
+  employeeId,
+  competency,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  employeeId: string;
+  competency: CoreCompetencyRow | null;
+}) => {
+  const qc = useQueryClient();
+  const [code, setCode] = useState<CompetencyRating>("G");
+  const [commentary, setCommentary] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (open && competency) {
+      setCode(competency.rating_code);
+      setCommentary(competency.commentary);
+    }
+  }, [open, competency]);
+
+  const save = async () => {
+    if (!competency) return;
+    setSaving(true);
+    const { error } = await supabase
+      .from("employee_core_competencies")
+      .update({ rating_code: code, commentary } as never)
+      .eq("id", competency.id);
+    setSaving(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Competency updated");
+    qc.invalidateQueries({ queryKey: ["employee", employeeId, "competencies"] });
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Edit {competency?.competency_name ?? "competency"}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="comp-code" className="text-xs font-medium text-muted-foreground">Rating</Label>
+            <select
+              id="comp-code"
+              value={code}
+              onChange={(e) => setCode(e.target.value as CompetencyRating)}
+              className="mt-1.5 w-full px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              {RATING_CODES.map((c) => (
+                <option key={c} value={c}>{c} — {ratingConfig[c].label}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <Label htmlFor="comp-commentary" className="text-xs font-medium text-muted-foreground">Commentary</Label>
+            <textarea
+              id="comp-commentary"
+              value={commentary}
+              onChange={(e) => setCommentary(e.target.value)}
+              rows={5}
+              className="mt-1.5 w-full px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-y"
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <button
+            onClick={() => onOpenChange(false)}
+            disabled={saving}
+            className="px-4 py-2 rounded-md border border-input bg-background text-sm font-medium hover:bg-muted transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={save}
+            disabled={saving}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
+          >
+            {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+            Save
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 const Overview = ({ employee }: OverviewProps) => {
   const [openSection, setOpenSection] = useState<string | null>(null);
   const [parsed, setParsed] = useState<ParsedPdr | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [perfEditOpen, setPerfEditOpen] = useState(false);
+  const [editingComp, setEditingComp] = useState<CoreCompetencyRow | null>(null);
   const queryClient = useQueryClient();
 
   const { data: row, isLoading: loadingRow } = useEmployeeRow(employee.id);
@@ -125,6 +382,8 @@ const Overview = ({ employee }: OverviewProps) => {
     );
   }
 
+  const perfUpdated = (row as typeof row & { performance_updated_at: string | null }).performance_updated_at;
+
   return (
     <div className="space-y-4">
       <Section
@@ -134,6 +393,20 @@ const Overview = ({ employee }: OverviewProps) => {
         onToggle={() => toggle("performance")}
       >
         <div className="space-y-6">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              {perfUpdated && (
+                <p className="text-xs text-muted-foreground">Last updated {formatDateLong(perfUpdated)}</p>
+              )}
+            </div>
+            <button
+              onClick={() => setPerfEditOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            >
+              <Pencil className="h-3.5 w-3.5" /> Edit performance
+            </button>
+          </div>
+
           <div>
             <p className="text-xs font-medium text-muted-foreground mb-2">Current Year Performance Rating</p>
             <RatingBadge code={row.current_year_rating_code} />
@@ -148,9 +421,22 @@ const Overview = ({ employee }: OverviewProps) => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {competencies.map((comp) => (
                 <div key={comp.id} className="bg-muted/30 rounded-lg border border-border p-4">
-                  <h4 className="text-sm font-heading font-bold text-foreground mb-2">{comp.competency_name}</h4>
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <h4 className="text-sm font-heading font-bold text-foreground">{comp.competency_name}</h4>
+                    <button
+                      onClick={() => setEditingComp(comp)}
+                      className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                      title="Edit"
+                      aria-label={`Edit ${comp.competency_name}`}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                   <RatingBadge code={comp.rating_code} />
                   <p className="text-sm text-muted-foreground leading-relaxed mt-3">{comp.commentary}</p>
+                  {comp.updated_at && (
+                    <p className="text-xs text-muted-foreground mt-3">Last updated {formatDateLong(comp.updated_at)}</p>
+                  )}
                 </div>
               ))}
               {competencies.length === 0 && (
@@ -266,6 +552,26 @@ const Overview = ({ employee }: OverviewProps) => {
       </Section>
 
       <PdrReviewDialog employeeId={employee.id} parsed={parsed} onClose={() => setParsed(null)} />
+
+      <EditPerformanceDialog
+        open={perfEditOpen}
+        onOpenChange={setPerfEditOpen}
+        employeeId={employee.id}
+        initial={{
+          current_year_rating_code: row.current_year_rating_code,
+          current_year_rating: row.current_year_rating,
+          performance_what_went_well: row.performance_what_went_well ?? "",
+          performance_what_could_go_better: row.performance_what_could_go_better ?? "",
+          performance_summary: row.performance_summary ?? "",
+        }}
+      />
+
+      <EditCompetencyDialog
+        open={!!editingComp}
+        onOpenChange={(o) => !o && setEditingComp(null)}
+        employeeId={employee.id}
+        competency={editingComp}
+      />
     </div>
   );
 };

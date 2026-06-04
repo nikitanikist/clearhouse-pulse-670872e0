@@ -21,6 +21,7 @@ export type Database = {
           employee_id: string
           id: string
           rating_code: Database["public"]["Enums"]["competency_rating"]
+          updated_at: string | null
         }
         Insert: {
           commentary?: string
@@ -28,6 +29,7 @@ export type Database = {
           employee_id: string
           id?: string
           rating_code: Database["public"]["Enums"]["competency_rating"]
+          updated_at?: string | null
         }
         Update: {
           commentary?: string
@@ -35,6 +37,7 @@ export type Database = {
           employee_id?: string
           id?: string
           rating_code?: Database["public"]["Enums"]["competency_rating"]
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -90,18 +93,21 @@ export type Database = {
           employee_id: string
           id: string
           skill_area: Database["public"]["Enums"]["interpersonal_area"]
+          updated_at: string | null
         }
         Insert: {
           assessment_text?: string
           employee_id: string
           id?: string
           skill_area: Database["public"]["Enums"]["interpersonal_area"]
+          updated_at?: string | null
         }
         Update: {
           assessment_text?: string
           employee_id?: string
           id?: string
           skill_area?: Database["public"]["Enums"]["interpersonal_area"]
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -129,6 +135,7 @@ export type Database = {
           location: Database["public"]["Enums"]["employee_location"]
           name: string
           performance_summary: string
+          performance_updated_at: string | null
           performance_what_could_go_better: string
           performance_what_went_well: string
           phone: string
@@ -155,6 +162,7 @@ export type Database = {
           location: Database["public"]["Enums"]["employee_location"]
           name: string
           performance_summary?: string
+          performance_updated_at?: string | null
           performance_what_could_go_better?: string
           performance_what_went_well?: string
           phone?: string
@@ -181,6 +189,7 @@ export type Database = {
           location?: Database["public"]["Enums"]["employee_location"]
           name?: string
           performance_summary?: string
+          performance_updated_at?: string | null
           performance_what_could_go_better?: string
           performance_what_went_well?: string
           phone?: string
@@ -201,6 +210,7 @@ export type Database = {
           created_at: string
           employee_id: string
           id: string
+          updated_at: string | null
         }
         Insert: {
           comment_by?: string
@@ -208,6 +218,7 @@ export type Database = {
           created_at?: string
           employee_id: string
           id?: string
+          updated_at?: string | null
         }
         Update: {
           comment_by?: string
@@ -215,6 +226,7 @@ export type Database = {
           created_at?: string
           employee_id?: string
           id?: string
+          updated_at?: string | null
         }
         Relationships: [
           {

@@ -5,6 +5,7 @@ import { useEmployeeInterpersonal } from "@/hooks/useEmployees";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import type { InterpersonalArea, InterpersonalRow } from "@/types/database";
+import { formatDateLong } from "@/lib/tenure";
 
 const SKILL_AREAS: InterpersonalArea[] = [
   "Client Communication",
@@ -127,6 +128,9 @@ const InterpersonalSkills = ({ employeeId }: { employeeId: string }) => {
                 </div>
               </div>
               <p className="text-sm text-muted-foreground leading-relaxed">{s.assessment_text}</p>
+              {s.updated_at && (
+                <p className="text-xs text-muted-foreground mt-3">Last updated {formatDateLong(s.updated_at)}</p>
+              )}
             </div>
           ))}
         </div>

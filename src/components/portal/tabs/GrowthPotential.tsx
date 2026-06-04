@@ -5,6 +5,7 @@ import { useEmployeeRow } from "@/hooks/useEmployees";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import type { PotentialRating } from "@/types/database";
+import { formatDateLong } from "@/lib/tenure";
 
 const potentialOptions: { value: PotentialRating; desc: string }[] = [
   { value: "Well Placed", desc: "Right role for now" },
@@ -111,7 +112,12 @@ const GrowthPotential = ({ employeeId }: { employeeId: string }) => {
 
       <div className="bg-card rounded-lg border border-border shadow-sm p-6">
         <div className="flex items-start justify-between gap-2 mb-3">
-          <h3 className="text-base font-heading font-bold text-foreground">Rationale for Potential Rating</h3>
+          <div>
+            <h3 className="text-base font-heading font-bold text-foreground">Rationale for Potential Rating</h3>
+            {employee?.updated_at && (
+              <p className="text-xs text-muted-foreground mt-1">Last updated {formatDateLong(employee.updated_at)}</p>
+            )}
+          </div>
           {!editingRationale && (
             <button
               onClick={() => setEditingRationale(true)}
