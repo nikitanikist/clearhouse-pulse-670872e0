@@ -94,6 +94,7 @@ export interface InterpersonalRow {
   employee_id: string;
   skill_area: InterpersonalArea;
   assessment_text: string;
+  updated_at: string | null;
 }
 
 export interface ManagementNoteRow {
@@ -102,6 +103,7 @@ export interface ManagementNoteRow {
   comment_text: string;
   comment_by: string;
   created_at: string;
+  updated_at: string | null;
 }
 
 export interface PdrDocumentRow {
