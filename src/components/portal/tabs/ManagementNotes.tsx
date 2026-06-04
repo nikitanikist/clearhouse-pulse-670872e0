@@ -147,7 +147,12 @@ const ManagementNotes = ({ employeeId, authorName }: ManagementNotesProps) => {
           <tbody className="divide-y divide-border">
             {filteredNotes.map((note) => (
               <tr key={note.id} className="hover:bg-muted/40 transition-colors">
-                <td className="px-4 py-3 text-sm text-muted-foreground align-top whitespace-nowrap">{formatDate(note.created_at)}</td>
+                <td className="px-4 py-3 text-sm text-muted-foreground align-top whitespace-nowrap">
+                  <div>{formatDate(note.created_at)}</div>
+                  {note.updated_at && (
+                    <div className="text-xs text-muted-foreground/80 mt-0.5">edited {formatEdited(note.updated_at)}</div>
+                  )}
+                </td>
                 <td className="px-4 py-3 text-sm text-foreground leading-relaxed">{note.comment_text}</td>
                 <td className="px-4 py-3 text-sm font-medium text-primary align-top whitespace-nowrap">{note.comment_by}</td>
                 <td className="px-4 py-3 align-top whitespace-nowrap text-right">
