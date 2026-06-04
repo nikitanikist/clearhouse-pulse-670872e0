@@ -165,6 +165,8 @@ const Dashboard = () => {
               />
             )}
 
+            {section === "reports" && <ReportsView />}
+
             {section === "settings" && (
               <SettingsView securityLevel={securityLevel} currentUserId={user?.id ?? null} />
             )}
