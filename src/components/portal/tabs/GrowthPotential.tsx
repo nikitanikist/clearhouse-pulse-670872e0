@@ -5,6 +5,7 @@ import { useEmployeeRow } from "@/hooks/useEmployees";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import type { PotentialRating } from "@/types/database";
+import { formatDateLong } from "@/lib/tenure";
 
 const potentialOptions: { value: PotentialRating; desc: string }[] = [
   { value: "Well Placed", desc: "Right role for now" },
