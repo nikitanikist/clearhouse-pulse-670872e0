@@ -1,7 +1,7 @@
-import { LayoutDashboard, Users, Building2, Settings, LogOut } from "lucide-react";
+import { LayoutDashboard, Users, Building2, BarChart3, Settings, LogOut } from "lucide-react";
 import type { SecurityLevel } from "@/data/employees";
 
-export type NavSection = "dashboard" | "employees" | "teams" | "settings";
+export type NavSection = "dashboard" | "employees" | "teams" | "reports" | "settings";
 
 const securityLabels: Record<SecurityLevel, string> = {
   1: "Level 1: Full Access",
