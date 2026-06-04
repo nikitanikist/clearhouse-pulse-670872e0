@@ -65,6 +65,7 @@ export interface EmployeeRow {
   career_aspirations_summary: string;
   dev_plan_summary: string;
   growth_rationale: string;
+  performance_updated_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -75,6 +76,7 @@ export interface CoreCompetencyRow {
   competency_name: CoreCompetencyName;
   rating_code: CompetencyRating;
   commentary: string;
+  updated_at: string | null;
 }
 
 export interface DevPlanRow {
