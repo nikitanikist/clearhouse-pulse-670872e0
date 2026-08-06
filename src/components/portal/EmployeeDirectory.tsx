@@ -113,7 +113,7 @@ const EmployeeDirectory = ({ employees, onSelectEmployee, initialFilters }: Empl
       const matchesSupervisor = !supervisorFilter || e.supervisor === supervisorFilter;
       return matchesSearch && matchesDept && matchesLoc && matchesPos && matchesPot && matchesRating && matchesSupervisor;
     });
-  }, [employees, search, deptFilter, locFilter, posFilter, potFilter, ratingFilter, supervisorFilter]);
+  }, [employees, search, deptFilter, locFilter, posFilter, potFilter, potMulti, ratingFilter, supervisorFilter]);
 
   const clearFilters = () => {
     setDeptFilter("");
