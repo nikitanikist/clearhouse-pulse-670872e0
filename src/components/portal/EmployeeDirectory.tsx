@@ -3,6 +3,7 @@ import { Search, Filter, Plus, Loader2, X } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
+import { useDepartmentNames, usePositionNames } from "@/hooks/useLookups";
 import { departmentBadgeClass, potentialColors, type Employee, type Department, type Location, type Position, type PotentialRating } from "@/data/employees";
 import type { CompetencyRating } from "@/types/database";
 import { Badge } from "@/components/ui/badge";
@@ -24,9 +25,7 @@ interface EmployeeDirectoryProps {
   initialFilters?: DirectoryFilters | null;
 }
 
-const departments: Department[] = ["Assurance", "Tax", "Advisory", "Operations"];
 const locations: Location[] = ["Canada", "India"];
-const positions: Position[] = ["Partner", "Manager", "Senior Associate", "Intermediate", "Associate", "Operations"];
 const potentials: PotentialRating[] = ["Well Placed", "Ready Now", "Ready Soon", "Ready Later"];
 
 const deriveRating = (score: number | null): CompetencyRating | null => {
@@ -65,6 +64,8 @@ const RatingBadge = ({ code }: { code: CompetencyRating | null }) => {
 };
 
 const EmployeeDirectory = ({ employees, onSelectEmployee, initialFilters }: EmployeeDirectoryProps) => {
+  const { names: departments } = useDepartmentNames();
+  const { names: positions } = usePositionNames();
   const [search, setSearch] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [deptFilter, setDeptFilter] = useState<string>("");
@@ -258,9 +259,9 @@ const EmployeeDirectory = ({ employees, onSelectEmployee, initialFilters }: Empl
         {filtersOpen && (
           <div className="flex flex-wrap items-center gap-3 mb-4 p-4 bg-muted/50 rounded-lg border border-border">
             {[
-              { label: "Department", value: deptFilter, setter: setDeptFilter, options: departments as readonly string[] },
+              { label: "Department", value: deptFilter, setter: setDeptFilter, options: departments },
               { label: "Location", value: locFilter, setter: setLocFilter, options: locations as readonly string[] },
-              { label: "Position", value: posFilter, setter: setPosFilter, options: positions as readonly string[] },
+              { label: "Position", value: posFilter, setter: setPosFilter, options: positions },
               { label: potMulti ? `Potential (${potMulti.join(", ")})` : "Potential", value: potMulti ? "" : potFilter, setter: (v: string) => { setPotMulti(null); setPotFilter(v); }, options: potentials as readonly string[] },
               { label: "Supervisor", value: supervisorFilter, setter: setSupervisorFilter, options: supervisors },
             ].map((f) => (
