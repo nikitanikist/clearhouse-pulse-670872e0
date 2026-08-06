@@ -4,6 +4,7 @@ import { Loader2, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { DepartmentsCard, PositionsCard } from "@/components/portal/settings/LookupManagers";
+import DataImport from "@/components/portal/settings/DataImport";
 import {
   Select,
   SelectContent,
