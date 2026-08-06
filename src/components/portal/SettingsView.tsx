@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
+import { DepartmentsCard, PositionsCard } from "@/components/portal/settings/LookupManagers";
 import {
   Select,
   SelectContent,
