@@ -487,6 +487,13 @@ const ReportsView = () => {
         </p>
       </header>
 
+      <Tabs defaultValue="overview" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="overview">Overview &amp; Analytics</TabsTrigger>
+          <TabsTrigger value="dev">Development Plans</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-6">
       <section className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         <KpiTile icon={Users} label="Total Employees" value={total} />
         <KpiTile icon={TrendingUp} label="Average Performance" value={avgPerf} />
