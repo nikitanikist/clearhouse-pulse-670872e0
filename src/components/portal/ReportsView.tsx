@@ -1,6 +1,25 @@
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   Bar,
   BarChart,
@@ -100,6 +119,244 @@ const axisProps = {
   axisLine: { stroke: "hsl(var(--border))" },
   tickLine: { stroke: "hsl(var(--border))" },
 };
+
+type DevRow = {
+  id: string;
+  objective: string | null;
+  activities: string | null;
+  support_resources: string | null;
+  target_date: string | null;
+  sort_order: number | null;
+};
+
+type DevEmployee = {
+  id: string;
+  name: string;
+  position: string | null;
+  department: string | null;
+  location: string | null;
+  career_aspirations_summary: string | null;
+  dev_plan_summary: string | null;
+  employee_dev_plan_rows: DevRow[] | null;
+};
+
+const ALL = "__all__";
+
+const FilterSelect = ({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: string[];
+}) => (
+  <div className="flex flex-col gap-1">
+    <span className="text-xs text-muted-foreground">{label}</span>
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger className="h-9 w-[180px]">
+        <SelectValue placeholder={`All ${label.toLowerCase()}s`} />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value={ALL}>All</SelectItem>
+        {options.map((o) => (
+          <SelectItem key={o} value={o}>
+            {o}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  </div>
+);
+
+const formatDate = (iso: string | null) => {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+};
+
+const DevelopmentPlansTab = () => {
+  const [position, setPosition] = useState(ALL);
+  const [department, setDepartment] = useState(ALL);
+  const [location, setLocation] = useState(ALL);
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["reports", "dev-plans"],
+    queryFn: async (): Promise<DevEmployee[]> => {
+      const { data, error } = await supabase
+        .from("employees")
+        .select(
+          "id, name, position, department, location, career_aspirations_summary, dev_plan_summary, employee_dev_plan_rows(id, objective, activities, support_resources, target_date, sort_order)",
+        )
+        .order("name");
+      if (error) throw error;
+      return (data ?? []) as unknown as DevEmployee[];
+    },
+  });
+
+  const rows = useMemo(() => data ?? [], [data]);
+
+  const distinct = (key: keyof DevEmployee) =>
+    Array.from(new Set(rows.map((r) => r[key] as string).filter(Boolean))).sort();
+
+  const positions = distinct("position");
+  const departments = distinct("department");
+  const locations = distinct("location");
+
+  const filtered = rows.filter(
+    (r) =>
+      (position === ALL || r.position === position) &&
+      (department === ALL || r.department === department) &&
+      (location === ALL || r.location === location),
+  );
+
+  const clearFilters = () => {
+    setPosition(ALL);
+    setDepartment(ALL);
+    setLocation(ALL);
+  };
+
+  const copySummary = async () => {
+    const text = filtered
+      .map(
+        (r) =>
+          `• ${r.name} — ${r.position ?? "—"} — ${
+            (r.career_aspirations_summary ?? "").trim() || "No aspirations recorded"
+          }`,
+      )
+      .join("\n");
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success(`Copied ${filtered.length} employee summaries`);
+    } catch {
+      toast.error("Could not copy to clipboard");
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="h-40 bg-card border border-border rounded-lg animate-pulse" />
+        ))}
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+        Failed to load development plan data.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <Card className="p-4">
+        <div className="flex flex-wrap items-end gap-3">
+          <FilterSelect label="Position" value={position} onChange={setPosition} options={positions} />
+          <FilterSelect label="Department" value={department} onChange={setDepartment} options={departments} />
+          <FilterSelect label="Location" value={location} onChange={setLocation} options={locations} />
+          <div className="ml-auto flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={clearFilters}>
+              Clear filters
+            </Button>
+            <Button variant="outline" size="sm" onClick={copySummary} disabled={!filtered.length}>
+              Copy summary
+            </Button>
+          </div>
+        </div>
+      </Card>
+
+      <p className="text-sm text-muted-foreground">
+        Showing {filtered.length} of {rows.length} employees
+      </p>
+
+      {filtered.length === 0 ? (
+        <Card className="p-10 text-center text-sm text-muted-foreground">
+          No employees match the current filter. Try adjusting the filters or Clear all.
+        </Card>
+      ) : (
+        <div className="space-y-4">
+          {filtered.map((e) => {
+            const aspirations = (e.career_aspirations_summary ?? "").trim();
+            const summary = (e.dev_plan_summary ?? "").trim();
+            const planRows = [...(e.employee_dev_plan_rows ?? [])].sort(
+              (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0),
+            );
+            const empty = !aspirations && !summary && planRows.length === 0;
+
+            return (
+              <Card key={e.id} className="p-5 space-y-4">
+                <div>
+                  <p className="font-semibold text-foreground">{e.name}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {[e.position, e.department, e.location].filter(Boolean).join(" • ")}
+                  </p>
+                </div>
+
+                {empty ? (
+                  <p className="text-sm text-muted-foreground">No development data recorded yet</p>
+                ) : (
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="text-sm font-semibold mb-1">Career Aspirations</h4>
+                      <p className="text-sm text-muted-foreground max-w-3xl whitespace-pre-line">
+                        {aspirations || "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-semibold mb-1">Professional Development Plan Summary</h4>
+                      <p className="text-sm text-muted-foreground max-w-3xl whitespace-pre-line">
+                        {summary || "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-semibold mb-2">Development Plan</h4>
+                      {planRows.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">No development plan rows recorded</p>
+                      ) : (
+                        <div className="rounded-md border border-border overflow-x-auto">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Objective</TableHead>
+                                <TableHead>Activities</TableHead>
+                                <TableHead>Support &amp; Resources</TableHead>
+                                <TableHead className="whitespace-nowrap">Target Date</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {planRows.map((r) => (
+                                <TableRow key={r.id}>
+                                  <TableCell className="align-top">{r.objective || "—"}</TableCell>
+                                  <TableCell className="align-top">{r.activities || "—"}</TableCell>
+                                  <TableCell className="align-top">{r.support_resources || "—"}</TableCell>
+                                  <TableCell className="align-top whitespace-nowrap">
+                                    {formatDate(r.target_date)}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </Card>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
+
 
 const ReportsView = () => {
   const { data, isLoading, error } = useQuery({
@@ -230,6 +487,13 @@ const ReportsView = () => {
         </p>
       </header>
 
+      <Tabs defaultValue="overview" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="overview">Overview &amp; Analytics</TabsTrigger>
+          <TabsTrigger value="dev">Development Plans</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-6">
       <section className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         <KpiTile icon={Users} label="Total Employees" value={total} />
         <KpiTile icon={TrendingUp} label="Average Performance" value={avgPerf} />
@@ -318,6 +582,12 @@ const ReportsView = () => {
           </BarChart>
         </ChartCard>
       </section>
+        </TabsContent>
+
+        <TabsContent value="dev">
+          <DevelopmentPlansTab />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
