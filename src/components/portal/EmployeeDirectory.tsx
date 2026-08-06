@@ -64,15 +64,31 @@ const RatingBadge = ({ code }: { code: CompetencyRating | null }) => {
   );
 };
 
-const EmployeeDirectory = ({ employees, onSelectEmployee }: EmployeeDirectoryProps) => {
+const EmployeeDirectory = ({ employees, onSelectEmployee, initialFilters }: EmployeeDirectoryProps) => {
   const [search, setSearch] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [deptFilter, setDeptFilter] = useState<string>("");
   const [locFilter, setLocFilter] = useState<string>("");
   const [posFilter, setPosFilter] = useState<string>("");
   const [potFilter, setPotFilter] = useState<string>("");
+  const [potMulti, setPotMulti] = useState<string[] | null>(null);
   const [ratingFilter, setRatingFilter] = useState<string>("");
   const [supervisorFilter, setSupervisorFilter] = useState<string>("");
+
+  useEffect(() => {
+    if (!initialFilters) return;
+    setDeptFilter(initialFilters.department ?? "");
+    const pot = initialFilters.potential;
+    if (Array.isArray(pot)) {
+      setPotMulti(pot);
+      setPotFilter("");
+    } else {
+      setPotMulti(null);
+      setPotFilter(pot ?? "");
+    }
+    if (initialFilters.department || pot) setFiltersOpen(true);
+  }, [initialFilters]);
+
 
   const supervisors = useMemo(
     () => Array.from(new Set(employees.map((e) => e.supervisor))).sort(),
