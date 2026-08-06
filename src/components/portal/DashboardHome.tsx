@@ -3,12 +3,18 @@ import type { Employee } from "@/data/employees";
 import { departmentColors } from "@/data/employees";
 import { averageRating, formatAverage } from "@/lib/ratings";
 
+export interface SectionFilters {
+  department?: string;
+  potential?: string | string[];
+}
+
 interface DashboardHomeProps {
   employees: Employee[];
   onNavigateToEmployee: (emp: Employee) => void;
+  onNavigateToSection?: (section: "employees" | "teams", filters?: SectionFilters | null) => void;
 }
 
-const DashboardHome = ({ employees, onNavigateToEmployee }: DashboardHomeProps) => {
+const DashboardHome = ({ employees, onNavigateToEmployee, onNavigateToSection }: DashboardHomeProps) => {
   const deptCounts = employees.reduce<Record<string, number>>((acc, e) => {
     acc[e.department] = (acc[e.department] || 0) + 1;
     return acc;
@@ -24,35 +30,54 @@ const DashboardHome = ({ employees, onNavigateToEmployee }: DashboardHomeProps) 
   const highPotential = employees.filter((e) => ["Well Placed", "Ready Now"].includes(e.potential));
 
   return (
-    <div className="p-6 space-y-6 max-w-6xl">
+    <div className="p-6 space-y-6 w-full">
       <div>
         <h1 className="text-2xl font-heading font-bold text-foreground">Dashboard</h1>
         <p className="text-sm text-muted-foreground mt-1">Employee portal overview</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={Users} label="Total Employees" value={String(employees.length)} />
-        <StatCard icon={Building2} label="Departments" value={String(Object.keys(deptCounts).length)} />
+        <StatCard
+          icon={Users}
+          label="Total Employees"
+          value={String(employees.length)}
+          onClick={() => onNavigateToSection?.("employees", null)}
+        />
+        <StatCard
+          icon={Building2}
+          label="Departments"
+          value={String(Object.keys(deptCounts).length)}
+          onClick={() => onNavigateToSection?.("teams")}
+        />
         <StatCard
           icon={Star}
           label="Avg. Rating"
           value={formatAverage(avg)}
           sublabel={`${ratedCount} of ${employees.length} rated`}
         />
-        <StatCard icon={TrendingUp} label="High Potential" value={String(highPotential.length)} />
+        <StatCard
+          icon={TrendingUp}
+          label="High Potential"
+          value={String(highPotential.length)}
+          onClick={() => onNavigateToSection?.("employees", { potential: ["Ready Now", "Ready Soon"] })}
+        />
       </div>
 
       <div className="bg-card rounded-lg border border-border p-6">
         <h2 className="text-base font-heading font-bold text-foreground mb-4">Department Breakdown</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {Object.entries(deptCounts).map(([dept, count]) => (
-            <div key={dept} className="rounded-lg border border-border p-4 text-center">
+            <button
+              key={dept}
+              onClick={() => onNavigateToSection?.("employees", { department: dept })}
+              className="rounded-lg border border-border p-4 text-center hover:bg-muted/50 transition-colors cursor-pointer"
+            >
               <span className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full mb-2 ${departmentColors[dept as keyof typeof departmentColors]}`}>
                 {dept}
               </span>
               <p className="text-2xl font-heading font-bold text-foreground">{count}</p>
               <p className="text-xs text-muted-foreground">employees</p>
-            </div>
+            </button>
           ))}
         </div>
       </div>
@@ -122,13 +147,21 @@ const StatCard = ({
   label,
   value,
   sublabel,
+  onClick,
 }: {
   icon: React.ElementType;
   label: string;
   value: string;
   sublabel?: string;
+  onClick?: () => void;
 }) => (
-  <div className="bg-card rounded-lg border border-border p-5">
+  <div
+    onClick={onClick}
+    role={onClick ? "button" : undefined}
+    tabIndex={onClick ? 0 : undefined}
+    onKeyDown={onClick ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } } : undefined}
+    className={`bg-card rounded-lg border border-border p-5 ${onClick ? "cursor-pointer hover:bg-muted/50 transition-colors" : ""}`}
+  >
     <div className="flex items-center gap-3">
       <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
         <Icon className="h-5 w-5 text-primary" />

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Search, Filter, Plus, Loader2, X } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -13,9 +13,15 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { RATING_LABELS, RATING_TO_NUMBER } from "@/lib/ratings";
 import SupervisorCombobox from "./SupervisorCombobox";
 
+export interface DirectoryFilters {
+  department?: string;
+  potential?: string | string[];
+}
+
 interface EmployeeDirectoryProps {
   employees: Employee[];
   onSelectEmployee: (emp: Employee) => void;
+  initialFilters?: DirectoryFilters | null;
 }
 
 const departments: Department[] = ["Assurance", "Tax", "Advisory", "Operations"];
@@ -58,15 +64,31 @@ const RatingBadge = ({ code }: { code: CompetencyRating | null }) => {
   );
 };
 
-const EmployeeDirectory = ({ employees, onSelectEmployee }: EmployeeDirectoryProps) => {
+const EmployeeDirectory = ({ employees, onSelectEmployee, initialFilters }: EmployeeDirectoryProps) => {
   const [search, setSearch] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [deptFilter, setDeptFilter] = useState<string>("");
   const [locFilter, setLocFilter] = useState<string>("");
   const [posFilter, setPosFilter] = useState<string>("");
   const [potFilter, setPotFilter] = useState<string>("");
+  const [potMulti, setPotMulti] = useState<string[] | null>(null);
   const [ratingFilter, setRatingFilter] = useState<string>("");
   const [supervisorFilter, setSupervisorFilter] = useState<string>("");
+
+  useEffect(() => {
+    if (!initialFilters) return;
+    setDeptFilter(initialFilters.department ?? "");
+    const pot = initialFilters.potential;
+    if (Array.isArray(pot)) {
+      setPotMulti(pot);
+      setPotFilter("");
+    } else {
+      setPotMulti(null);
+      setPotFilter(pot ?? "");
+    }
+    if (initialFilters.department || pot) setFiltersOpen(true);
+  }, [initialFilters]);
+
 
   const supervisors = useMemo(
     () => Array.from(new Set(employees.map((e) => e.supervisor))).sort(),
@@ -84,12 +106,14 @@ const EmployeeDirectory = ({ employees, onSelectEmployee }: EmployeeDirectoryPro
       const matchesDept = !deptFilter || e.department === deptFilter;
       const matchesLoc = !locFilter || e.location === locFilter;
       const matchesPos = !posFilter || e.position === posFilter;
-      const matchesPot = !potFilter || e.potential === potFilter;
+      const matchesPot = potMulti
+        ? potMulti.includes(e.potential)
+        : !potFilter || e.potential === potFilter;
       const matchesRating = !ratingFilter || deriveRating(e.currentYearRating) === ratingFilter;
       const matchesSupervisor = !supervisorFilter || e.supervisor === supervisorFilter;
       return matchesSearch && matchesDept && matchesLoc && matchesPos && matchesPot && matchesRating && matchesSupervisor;
     });
-  }, [employees, search, deptFilter, locFilter, posFilter, potFilter, ratingFilter, supervisorFilter]);
+  }, [employees, search, deptFilter, locFilter, posFilter, potFilter, potMulti, ratingFilter, supervisorFilter]);
 
   const clearFilters = () => {
     setDeptFilter("");
@@ -237,7 +261,7 @@ const EmployeeDirectory = ({ employees, onSelectEmployee }: EmployeeDirectoryPro
               { label: "Department", value: deptFilter, setter: setDeptFilter, options: departments as readonly string[] },
               { label: "Location", value: locFilter, setter: setLocFilter, options: locations as readonly string[] },
               { label: "Position", value: posFilter, setter: setPosFilter, options: positions as readonly string[] },
-              { label: "Potential", value: potFilter, setter: setPotFilter, options: potentials as readonly string[] },
+              { label: potMulti ? `Potential (${potMulti.join(", ")})` : "Potential", value: potMulti ? "" : potFilter, setter: (v: string) => { setPotMulti(null); setPotFilter(v); }, options: potentials as readonly string[] },
               { label: "Supervisor", value: supervisorFilter, setter: setSupervisorFilter, options: supervisors },
             ].map((f) => (
               <select

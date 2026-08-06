@@ -38,6 +38,16 @@ const Dashboard = () => {
   const [employeeView, setEmployeeView] = useState<"list" | "detail">("list");
   const [selected, setSelected] = useState<Employee | null>(null);
   const [activeTab, setActiveTab] = useState(0);
+  const [pendingFilters, setPendingFilters] = useState<{ department?: string; potential?: string | string[] } | null>(null);
+
+  const handleNavigateToSection = (
+    target: "employees" | "teams",
+    filters?: { department?: string; potential?: string | string[] } | null
+  ) => {
+    setSection(target as NavSection);
+    if (target === "employees") setEmployeeView("list");
+    setPendingFilters(filters ?? null);
+  };
 
   useEffect(() => {
     if (!selected && employees.length > 0) setSelected(employees[0]);
@@ -115,6 +125,7 @@ const Dashboard = () => {
               <DashboardHome
                 employees={employees}
                 onNavigateToEmployee={handleNavigateToEmployee}
+                onNavigateToSection={handleNavigateToSection}
               />
             )}
 
@@ -122,6 +133,7 @@ const Dashboard = () => {
               <EmployeeDirectory
                 employees={employees}
                 onSelectEmployee={handleSelectEmployee}
+                initialFilters={pendingFilters}
               />
             )}
 
