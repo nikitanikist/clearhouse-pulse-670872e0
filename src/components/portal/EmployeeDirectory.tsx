@@ -106,7 +106,9 @@ const EmployeeDirectory = ({ employees, onSelectEmployee, initialFilters }: Empl
       const matchesDept = !deptFilter || e.department === deptFilter;
       const matchesLoc = !locFilter || e.location === locFilter;
       const matchesPos = !posFilter || e.position === posFilter;
-      const matchesPot = !potFilter || e.potential === potFilter;
+      const matchesPot = potMulti
+        ? potMulti.includes(e.potential)
+        : !potFilter || e.potential === potFilter;
       const matchesRating = !ratingFilter || deriveRating(e.currentYearRating) === ratingFilter;
       const matchesSupervisor = !supervisorFilter || e.supervisor === supervisorFilter;
       return matchesSearch && matchesDept && matchesLoc && matchesPos && matchesPot && matchesRating && matchesSupervisor;
