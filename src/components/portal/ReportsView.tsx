@@ -582,6 +582,12 @@ const ReportsView = () => {
           </BarChart>
         </ChartCard>
       </section>
+        </TabsContent>
+
+        <TabsContent value="dev">
+          <DevelopmentPlansTab />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
