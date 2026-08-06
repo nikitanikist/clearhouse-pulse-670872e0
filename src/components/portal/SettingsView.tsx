@@ -205,6 +205,7 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
         <>
           <DepartmentsCard />
           <PositionsCard />
+          <DataImport />
         </>
       )}
 
