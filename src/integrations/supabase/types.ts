@@ -336,6 +336,47 @@ export type Database = {
         }
         Relationships: []
       }
+      salary_history: {
+        Row: {
+          annual_salary: number
+          created_at: string
+          currency: string
+          employee_id: string
+          id: string
+          notes: string | null
+          updated_at: string | null
+          year: number
+        }
+        Insert: {
+          annual_salary: number
+          created_at?: string
+          currency?: string
+          employee_id: string
+          id?: string
+          notes?: string | null
+          updated_at?: string | null
+          year: number
+        }
+        Update: {
+          annual_salary?: number
+          created_at?: string
+          currency?: string
+          employee_id?: string
+          id?: string
+          notes?: string | null
+          updated_at?: string | null
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "salary_history_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

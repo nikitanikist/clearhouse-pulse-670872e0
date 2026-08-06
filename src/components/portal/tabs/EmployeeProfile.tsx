@@ -20,6 +20,8 @@ import { useEmployees } from "@/hooks/useEmployees";
 import { useDepartmentNames, usePositionNames } from "@/hooks/useLookups";
 import SupervisorCombobox from "../SupervisorCombobox";
 import { formatTenure, formatDateLong } from "@/lib/tenure";
+import SalaryCard from "./SalaryCard";
+
 
 const locations: Location[] = ["Canada", "India"];
 
@@ -127,8 +129,10 @@ const EmployeeProfile = ({ employee }: { employee: Employee }) => {
   const roleTenureDisplay = formatTenure(local.roleStartDate, local.tenureInRole);
 
   return (
+    <>
     <div className="bg-card rounded-lg shadow-sm border border-border p-6">
       <div className="flex items-start justify-between mb-6">
+
         <div className="flex items-center gap-4">
           <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-heading font-bold text-2xl">
             {local.initials}
@@ -257,7 +261,10 @@ const EmployeeProfile = ({ employee }: { employee: Employee }) => {
         </div>
       )}
     </div>
+    <SalaryCard employeeId={employee.id} employeeName={local.name} />
+    </>
   );
+
 };
 
 export default EmployeeProfile;

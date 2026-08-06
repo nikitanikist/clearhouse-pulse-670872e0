@@ -110,6 +110,17 @@ export interface PdrDocumentRow {
   uploaded_at: string;
 }
 
+export interface SalaryHistoryRow {
+  id: string;
+  employee_id: string;
+  year: number;
+  annual_salary: number;
+  currency: string;
+  notes: string | null;
+  created_at: string;
+  updated_at: string | null;
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -120,6 +131,8 @@ export interface Database {
       employee_interpersonal: { Row: InterpersonalRow; Insert: Partial<InterpersonalRow>; Update: Partial<InterpersonalRow> };
       management_notes: { Row: ManagementNoteRow; Insert: Partial<ManagementNoteRow>; Update: Partial<ManagementNoteRow> };
       pdr_documents: { Row: PdrDocumentRow; Insert: Partial<PdrDocumentRow>; Update: Partial<PdrDocumentRow> };
+      salary_history: { Row: SalaryHistoryRow; Insert: Partial<SalaryHistoryRow>; Update: Partial<SalaryHistoryRow> };
+
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
