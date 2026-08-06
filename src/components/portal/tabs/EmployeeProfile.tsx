@@ -17,11 +17,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import type { Employee, Position, Department, Location } from "@/data/employees";
 import { useEmployees } from "@/hooks/useEmployees";
+import { useDepartmentNames, usePositionNames } from "@/hooks/useLookups";
 import SupervisorCombobox from "../SupervisorCombobox";
 import { formatTenure, formatDateLong } from "@/lib/tenure";
 
-const positions: Position[] = ["Partner", "Manager", "Senior Associate", "Intermediate", "Associate", "Operations"];
-const departments: Department[] = ["Assurance", "Tax", "Advisory", "Operations"];
 const locations: Location[] = ["Canada", "India"];
 
 const Field = ({ icon: Icon, label, value }: { icon: any; label: string; value: string }) => (
@@ -35,6 +34,8 @@ const Field = ({ icon: Icon, label, value }: { icon: any; label: string; value: 
 );
 
 const EmployeeProfile = ({ employee }: { employee: Employee }) => {
+  const { names: positions } = usePositionNames();
+  const { names: departments } = useDepartmentNames();
   const queryClient = useQueryClient();
   const { data: allEmployees = [] } = useEmployees();
   const [editing, setEditing] = useState(false);

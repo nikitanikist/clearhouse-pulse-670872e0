@@ -2,15 +2,9 @@
 // When Supabase is connected, generated types appear at src/integrations/supabase/types.ts;
 // this file is the app-facing schema layer that stays stable.
 
-export type Position =
-  | "Partner"
-  | "Manager"
-  | "Senior Associate"
-  | "Intermediate"
-  | "Associate"
-  | "Operations";
-
-export type Department = "Assurance" | "Tax" | "Advisory" | "Operations";
+// Departments and positions are admin-managed lookup tables, so these are free text.
+export type Position = string;
+export type Department = string;
 export type Location = "Canada" | "India";
 export type CompetencyRating = "E" | "G" | "M" | "NI";
 export type PotentialRating =

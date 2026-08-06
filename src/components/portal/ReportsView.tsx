@@ -38,7 +38,6 @@ const RATING_COLORS: Record<string, string> = {
 const RATING_NUM: Record<string, number> = { E: 4, G: 3, M: 2, NI: 1 };
 
 const POTENTIAL_ORDER = ["Well Placed", "Ready Now", "Ready Soon", "Ready Later"];
-const DEPARTMENTS = ["Assurance", "Tax", "Advisory", "Operations"];
 const COMPETENCIES = ["Thought", "Results", "Expertise", "People", "Self"];
 
 const parseTenureYears = (s: string | null): number | null => {
@@ -180,7 +179,8 @@ const ReportsView = () => {
   }));
 
   // Chart C: Avg performance by department
-  const deptAvg = DEPARTMENTS.map((dept) => {
+  const departmentNames = Array.from(new Set(rows.map((r) => r.department).filter(Boolean))).sort();
+  const deptAvg = departmentNames.map((dept) => {
     const rs = rows
       .filter((r) => r.department === dept)
       .map((r) => (r.current_year_rating == null ? null : Number(r.current_year_rating)))

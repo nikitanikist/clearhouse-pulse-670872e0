@@ -1,6 +1,6 @@
 import { Users, Building2, TrendingUp, Star, ArrowUpRight } from "lucide-react";
 import type { Employee } from "@/data/employees";
-import { departmentColors } from "@/data/employees";
+import { departmentBadgeClass } from "@/data/employees";
 import { averageRating, formatAverage } from "@/lib/ratings";
 
 export interface SectionFilters {
@@ -72,7 +72,7 @@ const DashboardHome = ({ employees, onNavigateToEmployee, onNavigateToSection }:
               onClick={() => onNavigateToSection?.("employees", { department: dept })}
               className="rounded-lg border border-border p-4 text-center hover:bg-muted/50 transition-colors cursor-pointer"
             >
-              <span className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full mb-2 ${departmentColors[dept as keyof typeof departmentColors]}`}>
+              <span className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full mb-2 ${departmentBadgeClass(dept)}`}>
                 {dept}
               </span>
               <p className="text-2xl font-heading font-bold text-foreground">{count}</p>

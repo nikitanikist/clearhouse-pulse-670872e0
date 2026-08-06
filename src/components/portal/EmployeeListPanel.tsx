@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { Search, ChevronDown, ChevronRight } from "lucide-react";
-import { departmentColors, potentialColors, type Employee, type Department, type Location, type Position, type PotentialRating } from "@/data/employees";
+import { departmentBadgeClass, potentialColors, type Employee, type Department, type Location, type Position, type PotentialRating } from "@/data/employees";
 
 interface EmployeeListPanelProps {
   employees: Employee[];
@@ -128,7 +128,7 @@ const EmployeeListPanel = ({ employees, selectedId, onSelect }: EmployeeListPane
                 <p className="text-xs text-sidebar-foreground/50">{emp.position}</p>
               </div>
             </div>
-            <span className={`inline-block mt-1.5 ml-4 text-[10px] font-medium px-2 py-0.5 rounded-full ${departmentColors[emp.department]}`}>
+            <span className={`inline-block mt-1.5 ml-4 text-[10px] font-medium px-2 py-0.5 rounded-full ${departmentBadgeClass(emp.department)}`}>
               {emp.department}
             </span>
           </button>

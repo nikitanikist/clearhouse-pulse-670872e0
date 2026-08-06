@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { departmentColors, potentialColors, type Employee, type Department } from "@/data/employees";
+import { departmentBadgeClass, potentialColors, type Employee, type Department } from "@/data/employees";
 import { Star, Users, Shield, Calculator, Lightbulb, Settings, ChevronDown } from "lucide-react";
 import { averageRating, formatAverage } from "@/lib/ratings";
 
@@ -51,7 +51,7 @@ const TeamsView = ({ employees, onSelectEmployee }: TeamsViewProps) => {
               }`}
             >
               <div className="flex items-center justify-between mb-3">
-                <span className={`inline-flex items-center justify-center w-10 h-10 rounded-lg ${departmentColors[dept]}`}>
+                <span className={`inline-flex items-center justify-center w-10 h-10 rounded-lg ${departmentBadgeClass(dept)}`}>
                   {deptIcons[dept]}
                 </span>
                 <ChevronDown
@@ -80,7 +80,7 @@ const TeamsView = ({ employees, onSelectEmployee }: TeamsViewProps) => {
       {activeDept && activeDept.members.length > 0 && (
         <div className="bg-card rounded-lg border border-border animate-in fade-in slide-in-from-top-2 duration-300">
           <div className="px-6 py-4 border-b border-border flex items-center gap-3">
-            <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${departmentColors[activeDept.dept]}`}>
+            <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${departmentBadgeClass(activeDept.dept)}`}>
               {activeDept.dept}
             </span>
             <span className="text-sm text-muted-foreground">
