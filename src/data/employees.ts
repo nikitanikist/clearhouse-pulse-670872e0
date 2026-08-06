@@ -2,9 +2,10 @@
 // shared TypeScript types and presentation helper maps used across components.
 
 export type PotentialRating = "Well Placed" | "Ready Now" | "Ready Soon" | "Ready Later";
-export type Department = "Assurance" | "Tax" | "Advisory" | "Operations";
+/** Departments and positions are admin-managed lookup tables now, so these are free text. */
+export type Department = string;
 export type Location = "Canada" | "India";
-export type Position = "Partner" | "Manager" | "Senior Associate" | "Intermediate" | "Associate" | "Operations";
+export type Position = string;
 
 export interface Employee {
   id: string;
@@ -30,11 +31,27 @@ export interface Employee {
   bffSummary: string;
 }
 
-export const departmentColors: Record<Department, string> = {
+/** Known department badge classes; unknown (admin-added) departments fall back. */
+export const departmentColors: Record<string, string> = {
   Assurance: "bg-primary/15 text-primary",
   Tax: "bg-success/15 text-success",
   Advisory: "bg-warning/15 text-warning",
   Operations: "bg-secondary/15 text-secondary",
+};
+
+const FALLBACK_DEPT_CLASSES = [
+  "bg-primary/15 text-primary",
+  "bg-success/15 text-success",
+  "bg-warning/15 text-warning",
+  "bg-secondary/15 text-secondary",
+  "bg-muted text-muted-foreground",
+];
+
+export const departmentBadgeClass = (dept: string): string => {
+  if (departmentColors[dept]) return departmentColors[dept];
+  let hash = 0;
+  for (let i = 0; i < dept.length; i++) hash = (hash * 31 + dept.charCodeAt(i)) >>> 0;
+  return FALLBACK_DEPT_CLASSES[hash % FALLBACK_DEPT_CLASSES.length];
 };
 
 export const potentialColors: Record<PotentialRating, string> = {
