@@ -72,7 +72,7 @@ const DashboardHome = ({ employees, onNavigateToEmployee, onNavigateToSection }:
               onClick={() => onNavigateToSection?.("employees", { department: dept })}
               className="rounded-lg border border-border p-4 text-center hover:bg-muted/50 transition-colors cursor-pointer"
             >
-              <span className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full mb-2 ${departmentColors[dept as keyof typeof departmentColors]}`}>
+              <span className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full mb-2 ${departmentBadgeClass(dept)}`}>
                 {dept}
               </span>
               <p className="text-2xl font-heading font-bold text-foreground">{count}</p>

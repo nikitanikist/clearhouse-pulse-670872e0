@@ -3,7 +3,7 @@ import { Search, Filter, Plus, Loader2, X } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
-import { departmentColors, potentialColors, type Employee, type Department, type Location, type Position, type PotentialRating } from "@/data/employees";
+import { departmentBadgeClass, potentialColors, type Employee, type Department, type Location, type Position, type PotentialRating } from "@/data/employees";
 import type { CompetencyRating } from "@/types/database";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -346,7 +346,7 @@ const EmployeeDirectory = ({ employees, onSelectEmployee, initialFilters }: Empl
                   </td>
                   <td className="px-4 py-3 text-sm text-foreground">{emp.position}</td>
                   <td className="px-4 py-3">
-                    <span className={`inline-block text-xs font-medium px-2.5 py-1 rounded-full ${departmentColors[emp.department]}`}>
+                    <span className={`inline-block text-xs font-medium px-2.5 py-1 rounded-full ${departmentBadgeClass(emp.department)}`}>
                       {emp.department}
                     </span>
                   </td>
