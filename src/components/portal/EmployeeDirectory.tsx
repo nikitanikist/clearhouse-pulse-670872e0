@@ -261,7 +261,7 @@ const EmployeeDirectory = ({ employees, onSelectEmployee, initialFilters }: Empl
               { label: "Department", value: deptFilter, setter: setDeptFilter, options: departments as readonly string[] },
               { label: "Location", value: locFilter, setter: setLocFilter, options: locations as readonly string[] },
               { label: "Position", value: posFilter, setter: setPosFilter, options: positions as readonly string[] },
-              { label: "Potential", value: potFilter, setter: setPotFilter, options: potentials as readonly string[] },
+              { label: potMulti ? `Potential (${potMulti.join(", ")})` : "Potential", value: potMulti ? "" : potFilter, setter: (v: string) => { setPotMulti(null); setPotFilter(v); }, options: potentials as readonly string[] },
               { label: "Supervisor", value: supervisorFilter, setter: setSupervisorFilter, options: supervisors },
             ].map((f) => (
               <select
