@@ -20,6 +20,8 @@ import { useEmployees } from "@/hooks/useEmployees";
 import { useDepartmentNames, usePositionNames } from "@/hooks/useLookups";
 import SupervisorCombobox from "../SupervisorCombobox";
 import { formatTenure, formatDateLong } from "@/lib/tenure";
+import SalaryCard from "./SalaryCard";
+
 
 const locations: Location[] = ["Canada", "India"];
 
