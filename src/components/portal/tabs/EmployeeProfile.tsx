@@ -259,7 +259,10 @@ const EmployeeProfile = ({ employee }: { employee: Employee }) => {
         </div>
       )}
     </div>
+    <SalaryCard employeeId={employee.id} employeeName={local.name} />
+    </>
   );
+
 };
 
 export default EmployeeProfile;
