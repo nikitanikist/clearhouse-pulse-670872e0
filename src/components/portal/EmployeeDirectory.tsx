@@ -13,9 +13,15 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { RATING_LABELS, RATING_TO_NUMBER } from "@/lib/ratings";
 import SupervisorCombobox from "./SupervisorCombobox";
 
+export interface DirectoryFilters {
+  department?: string;
+  potential?: string | string[];
+}
+
 interface EmployeeDirectoryProps {
   employees: Employee[];
   onSelectEmployee: (emp: Employee) => void;
+  initialFilters?: DirectoryFilters | null;
 }
 
 const departments: Department[] = ["Assurance", "Tax", "Advisory", "Operations"];
