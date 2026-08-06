@@ -110,6 +110,17 @@ export interface PdrDocumentRow {
   uploaded_at: string;
 }
 
+export interface SalaryHistoryRow {
+  id: string;
+  employee_id: string;
+  year: number;
+  annual_salary: number;
+  currency: string;
+  notes: string | null;
+  created_at: string;
+  updated_at: string | null;
+}
+
 export interface Database {
   public: {
     Tables: {
