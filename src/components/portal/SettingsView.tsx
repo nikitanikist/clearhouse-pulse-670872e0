@@ -199,6 +199,13 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
         )}
       </section>
 
+      {isAdmin && (
+        <>
+          <DepartmentsCard />
+          <PositionsCard />
+        </>
+      )}
+
       <AlertDialog open={!!pending} onOpenChange={(o) => !o && !applying && setPending(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
