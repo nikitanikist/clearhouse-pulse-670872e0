@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      departments: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       employee_core_competencies: {
         Row: {
           commentary: string
@@ -126,7 +144,7 @@ export type Database = {
           created_at: string
           current_year_rating: number | null
           current_year_rating_code: Database["public"]["Enums"]["competency_rating"]
-          department: Database["public"]["Enums"]["employee_department"]
+          department: string
           dev_plan_summary: string
           email: string
           growth_rationale: string
@@ -139,7 +157,7 @@ export type Database = {
           performance_what_could_go_better: string
           performance_what_went_well: string
           phone: string
-          position: Database["public"]["Enums"]["employee_position"]
+          position: string
           potential_rating: Database["public"]["Enums"]["potential_rating"]
           role_start_date: string | null
           supervisor: string
@@ -153,7 +171,7 @@ export type Database = {
           created_at?: string
           current_year_rating?: number | null
           current_year_rating_code?: Database["public"]["Enums"]["competency_rating"]
-          department: Database["public"]["Enums"]["employee_department"]
+          department: string
           dev_plan_summary?: string
           email: string
           growth_rationale?: string
@@ -166,7 +184,7 @@ export type Database = {
           performance_what_could_go_better?: string
           performance_what_went_well?: string
           phone?: string
-          position: Database["public"]["Enums"]["employee_position"]
+          position: string
           potential_rating?: Database["public"]["Enums"]["potential_rating"]
           role_start_date?: string | null
           supervisor?: string
@@ -180,7 +198,7 @@ export type Database = {
           created_at?: string
           current_year_rating?: number | null
           current_year_rating_code?: Database["public"]["Enums"]["competency_rating"]
-          department?: Database["public"]["Enums"]["employee_department"]
+          department?: string
           dev_plan_summary?: string
           email?: string
           growth_rationale?: string
@@ -193,7 +211,7 @@ export type Database = {
           performance_what_could_go_better?: string
           performance_what_went_well?: string
           phone?: string
-          position?: Database["public"]["Enums"]["employee_position"]
+          position?: string
           potential_rating?: Database["public"]["Enums"]["potential_rating"]
           role_start_date?: string | null
           supervisor?: string
@@ -276,6 +294,27 @@ export type Database = {
           },
         ]
       }
+      positions: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          visibility_tier: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          visibility_tier: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          visibility_tier?: number
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -302,10 +341,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      can_view_employee: {
-        Args: { p: Database["public"]["Enums"]["employee_position"] }
-        Returns: boolean
-      }
+      can_view_employee: { Args: { p: string }; Returns: boolean }
       current_security_level: { Args: never; Returns: number }
     }
     Enums: {
