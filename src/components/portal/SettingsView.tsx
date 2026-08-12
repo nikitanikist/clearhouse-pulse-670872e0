@@ -221,13 +221,26 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
         )}
       </section>
 
-      {isAdmin && (
+      {isAdmin && permissions.can_manage_lookups && (
         <>
           <DepartmentsCard />
           <PositionsCard />
-          <DataImport />
         </>
       )}
+      {isAdmin && permissions.can_import_data && <DataImport />}
+
+      {permTarget && (
+        <PermissionsDialog
+          open={!!permTarget}
+          onOpenChange={(o) => !o && setPermTarget(null)}
+          userId={permTarget.user_id}
+          fullName={permTarget.full_name}
+          securityLevel={permTarget.security_level}
+          customPermissions={permTarget.custom_permissions}
+          currentUserId={currentUserId}
+        />
+      )}
+
 
       <AlertDialog open={!!pending} onOpenChange={(o) => !o && !applying && setPending(null)}>
         <AlertDialogContent>
