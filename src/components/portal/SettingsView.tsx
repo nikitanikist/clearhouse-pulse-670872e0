@@ -36,7 +36,9 @@ interface ProfileRow {
   user_id: string;
   full_name: string;
   security_level: number;
+  custom_permissions: Partial<Permissions> | null;
 }
+
 
 const LEVEL_LABELS: Record<number, string> = {
   1: "Level 1 (Full access)",
