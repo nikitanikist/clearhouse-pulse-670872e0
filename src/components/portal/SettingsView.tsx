@@ -148,10 +148,19 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
       <p className="text-sm text-muted-foreground mt-1 mb-6">User & access management</p>
 
       <section className="bg-card rounded-lg border border-border p-6">
-        <h2 className="text-lg font-heading font-semibold text-foreground">User & Access Management</h2>
-        <p className="text-sm text-muted-foreground mt-1 mb-4">
-          Control which portal users can see which employees.
-        </p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-heading font-semibold text-foreground">User & Access Management</h2>
+            <p className="text-sm text-muted-foreground mt-1 mb-4">
+              Control which portal users can see which employees.
+            </p>
+          </div>
+          {isAdmin && (
+            <Button size="sm" onClick={() => setInviteOpen(true)}>
+              <UserPlus className="h-4 w-4 mr-1.5" /> Invite User
+            </Button>
+          )}
+        </div>
 
         {!isAdmin && (
           <div className="rounded-md border border-border bg-muted/40 p-4 flex items-start gap-3">
