@@ -141,7 +141,9 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
                     <tr>
                       <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Name</th>
                       <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[320px]">Security Level</th>
+                      <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[160px]">Permissions</th>
                     </tr>
+
                   </thead>
                   <tbody>
                     {users.map((u) => {
