@@ -90,6 +90,7 @@ const TeamsView = ({ employees, onSelectEmployee }: TeamsViewProps) => {
           );
         })}
       </div>
+      )}
 
       {/* Expanded Member Table */}
       {activeDept && activeDept.members.length > 0 && (
