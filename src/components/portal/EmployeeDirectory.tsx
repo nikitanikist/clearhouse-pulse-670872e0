@@ -136,6 +136,7 @@ const EmployeeDirectory = ({ employees, onSelectEmployee, initialFilters }: Empl
   const hasAnyConstraint = hasActiveFilters || search.length > 0;
 
   const queryClient = useQueryClient();
+  const permissions = usePermissions();
   const [addOpen, setAddOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const initialForm = {
