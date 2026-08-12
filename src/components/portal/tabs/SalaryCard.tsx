@@ -89,7 +89,10 @@ const SalaryCard = ({ employeeId, employeeName }: { employeeId: string; employee
   const selectCls =
     "mt-1.5 w-full px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary";
 
+  if (!permissions.can_view_salary) return null;
+
   return (
+
     <div className="bg-card rounded-lg shadow-sm border border-border p-6 mt-6">
       <div className="flex items-start justify-between mb-4">
         <h3 className="text-base font-heading font-bold text-foreground flex items-center gap-2">
