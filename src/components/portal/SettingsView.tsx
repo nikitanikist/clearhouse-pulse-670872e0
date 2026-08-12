@@ -270,6 +270,47 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
         )}
       </section>
 
+      <Dialog open={inviteOpen} onOpenChange={(o) => !inviting && setInviteOpen(o)}>
+        <DialogContent>
+          <form onSubmit={sendInvite}>
+            <DialogHeader>
+              <DialogTitle>Invite New User</DialogTitle>
+              <DialogDescription>
+                The user will receive an email with a signup link. Their profile appears here after they complete signup.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="invite-name">Full name</Label>
+                <Input id="invite-name" required value={inviteName} onChange={(e) => setInviteName(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="invite-email">Email</Label>
+                <Input id="invite-email" type="email" required value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Initial Security Level</Label>
+                <Select value={inviteLevel} onValueChange={setInviteLevel}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {[1, 2, 3, 4, 5].map((lvl) => (
+                      <SelectItem key={lvl} value={String(lvl)}>{LEVEL_LABELS[lvl]}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" disabled={inviting} onClick={() => setInviteOpen(false)}>Cancel</Button>
+              <Button type="submit" disabled={inviting}>
+                {inviting ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> Sending…</> : "Send Invite"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+
       {isAdmin && permissions.can_manage_lookups && (
         <>
           <DepartmentsCard />
