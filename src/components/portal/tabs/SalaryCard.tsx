@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Pencil, Trash2, Plus, Loader2, DollarSign } from "lucide-react";
+import { usePermissions } from "@/hooks/usePermissions";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
@@ -27,6 +28,8 @@ const emptyForm = (): FormState => ({
 
 const SalaryCard = ({ employeeId, employeeName }: { employeeId: string; employeeName: string }) => {
   const queryClient = useQueryClient();
+  const permissions = usePermissions();
+
   const { data: entries = [], isLoading } = useSalaryHistory(employeeId);
   const [showAll, setShowAll] = useState(false);
   const [manageOpen, setManageOpen] = useState(false);
@@ -86,18 +89,23 @@ const SalaryCard = ({ employeeId, employeeName }: { employeeId: string; employee
   const selectCls =
     "mt-1.5 w-full px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary";
 
+  if (!permissions.can_view_salary) return null;
+
   return (
+
     <div className="bg-card rounded-lg shadow-sm border border-border p-6 mt-6">
       <div className="flex items-start justify-between mb-4">
         <h3 className="text-base font-heading font-bold text-foreground flex items-center gap-2">
           <DollarSign className="h-4 w-4 text-primary" /> Salary
         </h3>
-        <button
-          onClick={() => setManageOpen(true)}
-          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-border text-sm font-medium hover:bg-muted transition-colors"
-        >
-          <Pencil className="h-3.5 w-3.5" /> Manage Salary
-        </button>
+        {permissions.can_edit_salary && (
+          <button
+            onClick={() => setManageOpen(true)}
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-border text-sm font-medium hover:bg-muted transition-colors"
+          >
+            <Pencil className="h-3.5 w-3.5" /> Manage Salary
+          </button>
+        )}
       </div>
 
       <div className="mb-4">

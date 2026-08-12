@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import type { PotentialRating } from "@/types/database";
 import { formatDateLong } from "@/lib/tenure";
+import { usePermissions } from "@/hooks/usePermissions";
 
 const potentialOptions: { value: PotentialRating; desc: string }[] = [
   { value: "Well Placed", desc: "Right role for now" },
@@ -17,6 +18,7 @@ const potentialOptions: { value: PotentialRating; desc: string }[] = [
 const GrowthPotential = ({ employeeId }: { employeeId: string }) => {
   const { data: employee, isLoading } = useEmployeeRow(employeeId);
   const queryClient = useQueryClient();
+  const permissions = usePermissions();
 
   const [savingRating, setSavingRating] = useState<PotentialRating | null>(null);
   const [editingRationale, setEditingRationale] = useState(false);
@@ -94,7 +96,7 @@ const GrowthPotential = ({ employeeId }: { employeeId: string }) => {
                 key={p.value}
                 type="button"
                 onClick={() => updateRating(p.value)}
-                disabled={!!savingRating}
+                disabled={!!savingRating || !permissions.can_edit_growth}
                 className={`px-5 py-2.5 rounded-full text-sm font-semibold transition-all inline-flex items-center gap-2 disabled:opacity-60 ${
                   isSelected
                     ? "bg-primary text-primary-foreground"
@@ -118,7 +120,7 @@ const GrowthPotential = ({ employeeId }: { employeeId: string }) => {
               <p className="text-xs text-muted-foreground mt-1">Last updated {formatDateLong(employee.updated_at)}</p>
             )}
           </div>
-          {!editingRationale && (
+          {!editingRationale && permissions.can_edit_growth && (
             <button
               onClick={() => setEditingRationale(true)}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"

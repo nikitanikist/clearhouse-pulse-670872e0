@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Mail, Phone, User, Calendar, Building2, MapPin, Briefcase, Users, Pencil, Loader2 } from "lucide-react";
+import { usePermissions } from "@/hooks/usePermissions";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
@@ -40,6 +41,7 @@ const EmployeeProfile = ({ employee }: { employee: Employee }) => {
   const { names: departments } = useDepartmentNames();
   const queryClient = useQueryClient();
   const { data: allEmployees = [] } = useEmployees();
+  const permissions = usePermissions();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
@@ -142,7 +144,7 @@ const EmployeeProfile = ({ employee }: { employee: Employee }) => {
             <p className="text-sm text-muted-foreground">{local.position} · {local.department}</p>
           </div>
         </div>
-        {!editing && (
+        {!editing && permissions.can_edit_profile && (
           <button
             onClick={() => setEditing(true)}
             className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-border text-sm font-medium hover:bg-muted transition-colors"

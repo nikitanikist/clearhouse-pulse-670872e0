@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { ChevronDown, ChevronRight, Download, Trash2, Eye, Loader2, Pencil } from "lucide-react";
+import { usePermissions } from "@/hooks/usePermissions";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { Employee } from "@/data/employees";
@@ -345,6 +346,7 @@ const Overview = ({ employee }: OverviewProps) => {
   const [parsed, setParsed] = useState<ParsedPdr | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [perfEditOpen, setPerfEditOpen] = useState(false);
+  const permissions = usePermissions();
   const [editingComp, setEditingComp] = useState<CoreCompetencyRow | null>(null);
   const queryClient = useQueryClient();
 
@@ -399,12 +401,14 @@ const Overview = ({ employee }: OverviewProps) => {
                 <p className="text-xs text-muted-foreground">Last updated {formatDateLong(perfUpdated)}</p>
               )}
             </div>
-            <button
-              onClick={() => setPerfEditOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-            >
-              <Pencil className="h-3.5 w-3.5" /> Edit performance
-            </button>
+            {permissions.can_edit_performance && (
+              <button
+                onClick={() => setPerfEditOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+              >
+                <Pencil className="h-3.5 w-3.5" /> Edit performance
+              </button>
+            )}
           </div>
 
           <div>
@@ -423,14 +427,16 @@ const Overview = ({ employee }: OverviewProps) => {
                 <div key={comp.id} className="bg-muted/30 rounded-lg border border-border p-4">
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <h4 className="text-sm font-heading font-bold text-foreground">{comp.competency_name}</h4>
-                    <button
-                      onClick={() => setEditingComp(comp)}
-                      className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                      title="Edit"
-                      aria-label={`Edit ${comp.competency_name}`}
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </button>
+                    {permissions.can_edit_performance && (
+                      <button
+                        onClick={() => setEditingComp(comp)}
+                        className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                        title="Edit"
+                        aria-label={`Edit ${comp.competency_name}`}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                    )}
                   </div>
                   <RatingBadge code={comp.rating_code} />
                   <p className="text-sm text-muted-foreground leading-relaxed mt-3">{comp.commentary}</p>

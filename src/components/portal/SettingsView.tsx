@@ -1,10 +1,14 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, ShieldAlert } from "lucide-react";
+import { Loader2, ShieldAlert, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { DepartmentsCard, PositionsCard } from "@/components/portal/settings/LookupManagers";
 import DataImport from "@/components/portal/settings/DataImport";
+import PermissionsDialog from "@/components/portal/settings/PermissionsDialog";
+import { usePermissions } from "@/hooks/usePermissions";
+import type { Permissions } from "@/lib/permissions";
+
 import {
   Select,
   SelectContent,
@@ -32,7 +36,9 @@ interface ProfileRow {
   user_id: string;
   full_name: string;
   security_level: number;
+  custom_permissions: Partial<Permissions> | null;
 }
+
 
 const LEVEL_LABELS: Record<number, string> = {
   1: "Level 1 (Full access)",
@@ -59,9 +65,11 @@ interface PendingChange {
 
 const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
   const qc = useQueryClient();
+  const permissions = usePermissions();
   const isAdmin = securityLevel === 1;
   const [pending, setPending] = useState<PendingChange | null>(null);
   const [applying, setApplying] = useState(false);
+  const [permTarget, setPermTarget] = useState<ProfileRow | null>(null);
 
   const { data: users = [], isLoading, error } = useQuery({
     queryKey: ["portal-users"],
@@ -69,11 +77,12 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
     queryFn: async (): Promise<ProfileRow[]> => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("user_id, full_name, security_level")
+        .select("user_id, full_name, security_level, custom_permissions")
         .order("security_level", { ascending: true });
       if (error) throw error;
-      return (data ?? []) as ProfileRow[];
+      return (data ?? []) as unknown as ProfileRow[];
     },
+
   });
 
   const applyChange = async () => {
@@ -132,7 +141,9 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
                     <tr>
                       <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Name</th>
                       <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[320px]">Security Level</th>
+                      <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[160px]">Permissions</th>
                     </tr>
+
                   </thead>
                   <tbody>
                     {users.map((u) => {
@@ -172,16 +183,25 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
                               </SelectContent>
                             </Select>
                           </td>
+                          <td className="px-4 py-2 text-right">
+                            <button
+                              onClick={() => setPermTarget(u)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                            >
+                              <SlidersHorizontal className="h-3.5 w-3.5" /> Permissions
+                            </button>
+                          </td>
                         </tr>
                       );
                     })}
                     {users.length === 0 && (
                       <tr>
-                        <td colSpan={2} className="px-4 py-6 text-center text-muted-foreground">
+                        <td colSpan={3} className="px-4 py-6 text-center text-muted-foreground">
                           No users found.
                         </td>
                       </tr>
                     )}
+
                   </tbody>
                 </table>
               </div>
@@ -201,13 +221,26 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
         )}
       </section>
 
-      {isAdmin && (
+      {isAdmin && permissions.can_manage_lookups && (
         <>
           <DepartmentsCard />
           <PositionsCard />
-          <DataImport />
         </>
       )}
+      {isAdmin && permissions.can_import_data && <DataImport />}
+
+      {permTarget && (
+        <PermissionsDialog
+          open={!!permTarget}
+          onOpenChange={(o) => !o && setPermTarget(null)}
+          userId={permTarget.user_id}
+          fullName={permTarget.full_name}
+          securityLevel={permTarget.security_level}
+          customPermissions={permTarget.custom_permissions}
+          currentUserId={currentUserId}
+        />
+      )}
+
 
       <AlertDialog open={!!pending} onOpenChange={(o) => !o && !applying && setPending(null)}>
         <AlertDialogContent>

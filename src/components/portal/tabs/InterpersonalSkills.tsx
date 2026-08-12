@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Info, Loader2, Plus, Pencil, Trash2 } from "lucide-react";
+import { usePermissions } from "@/hooks/usePermissions";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEmployeeInterpersonal } from "@/hooks/useEmployees";
 import { supabase } from "@/lib/supabase";
@@ -24,6 +25,7 @@ const InterpersonalSkills = ({ employeeId }: { employeeId: string }) => {
   const queryClient = useQueryClient();
 
   const [dialogOpen, setDialogOpen] = useState(false);
+  const permissions = usePermissions();
   const [editing, setEditing] = useState<InterpersonalRow | null>(null);
   const [skillArea, setSkillArea] = useState<InterpersonalArea>(SKILL_AREAS[0]);
   const [assessment, setAssessment] = useState("");
@@ -87,14 +89,16 @@ const InterpersonalSkills = ({ employeeId }: { employeeId: string }) => {
         </p>
       </div>
 
-      <div className="flex justify-end">
-        <button
-          onClick={openAdd}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors"
-        >
-          <Plus className="h-4 w-4" /> Add assessment
-        </button>
-      </div>
+      {permissions.can_edit_interpersonal && (
+        <div className="flex justify-end">
+          <button
+            onClick={openAdd}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors"
+          >
+            <Plus className="h-4 w-4" /> Add assessment
+          </button>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="flex items-center gap-2 text-sm text-muted-foreground py-8 justify-center">
@@ -110,7 +114,7 @@ const InterpersonalSkills = ({ employeeId }: { employeeId: string }) => {
             <div key={s.id} className="bg-card rounded-lg border border-border shadow-sm p-5 flex flex-col">
               <div className="flex items-start justify-between gap-2 mb-2">
                 <h4 className="text-sm font-heading font-bold text-foreground">{s.skill_area}</h4>
-                <div className="flex items-center gap-1 shrink-0">
+                <div className={`items-center gap-1 shrink-0 ${permissions.can_edit_interpersonal ? "flex" : "hidden"}`}>
                   <button
                     onClick={() => openEdit(s)}
                     className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"

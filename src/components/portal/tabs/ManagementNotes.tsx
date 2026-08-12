@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Plus, Loader2, Pencil, Trash2 } from "lucide-react";
+import { usePermissions } from "@/hooks/usePermissions";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { useQueryClient } from "@tanstack/react-query";
@@ -38,6 +39,7 @@ const ManagementNotes = ({ employeeId, authorName }: ManagementNotesProps) => {
   const [newNote, setNewNote] = useState("");
   const [authorFilter, setAuthorFilter] = useState("all");
   const [saving, setSaving] = useState(false);
+  const permissions = usePermissions();
   const [editNote, setEditNote] = useState<{ id: string; text: string } | null>(null);
   const [editSaving, setEditSaving] = useState(false);
 
@@ -95,26 +97,29 @@ const ManagementNotes = ({ employeeId, authorName }: ManagementNotesProps) => {
 
   return (
     <div className="space-y-6">
-      <div className="bg-card rounded-lg border border-border shadow-sm p-6">
-        <h3 className="text-base font-heading font-bold text-foreground mb-3">Add Note</h3>
-        <Label htmlFor="new-note" className="sr-only">New management note</Label>
-        <textarea
-          id="new-note"
-          value={newNote}
-          onChange={(e) => setNewNote(e.target.value)}
-          placeholder="Write a management note..."
-          className="w-full px-4 py-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
-          rows={3}
-        />
-        <button
-          onClick={addNote}
-          disabled={saving || !newNote.trim()}
-          className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
-        >
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-          Add Note
-        </button>
-      </div>
+      {permissions.can_manage_notes && (
+        <div className="bg-card rounded-lg border border-border shadow-sm p-6">
+          <h3 className="text-base font-heading font-bold text-foreground mb-3">Add Note</h3>
+          <Label htmlFor="new-note" className="sr-only">New management note</Label>
+          <textarea
+            id="new-note"
+            value={newNote}
+            onChange={(e) => setNewNote(e.target.value)}
+            placeholder="Write a management note..."
+            className="w-full px-4 py-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+            rows={3}
+          />
+          <button
+            onClick={addNote}
+            disabled={saving || !newNote.trim()}
+            className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
+          >
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+            Add Note
+          </button>
+        </div>
+      )}
+
 
       <div className="bg-card rounded-lg border border-border shadow-sm overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/20">
@@ -156,7 +161,7 @@ const ManagementNotes = ({ employeeId, authorName }: ManagementNotesProps) => {
                 <td className="px-4 py-3 text-sm text-foreground leading-relaxed">{note.comment_text}</td>
                 <td className="px-4 py-3 text-sm font-medium text-primary align-top whitespace-nowrap">{note.comment_by}</td>
                 <td className="px-4 py-3 align-top whitespace-nowrap text-right">
-                  <div className="inline-flex items-center gap-1">
+                  <div className={`items-center gap-1 ${permissions.can_manage_notes ? "inline-flex" : "hidden"}`}>
                     <button
                       onClick={() => setEditNote({ id: note.id, text: note.comment_text })}
                       className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-muted transition-colors"
