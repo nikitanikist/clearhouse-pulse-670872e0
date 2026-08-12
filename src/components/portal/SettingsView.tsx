@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, ShieldAlert, SlidersHorizontal } from "lucide-react";
+import { Loader2, ShieldAlert, SlidersHorizontal, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { DepartmentsCard, PositionsCard } from "@/components/portal/settings/LookupManagers";
@@ -8,6 +8,17 @@ import DataImport from "@/components/portal/settings/DataImport";
 import PermissionsDialog from "@/components/portal/settings/PermissionsDialog";
 import { usePermissions } from "@/hooks/usePermissions";
 import type { Permissions } from "@/lib/permissions";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 import {
   Select,
@@ -70,6 +81,35 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
   const [pending, setPending] = useState<PendingChange | null>(null);
   const [applying, setApplying] = useState(false);
   const [permTarget, setPermTarget] = useState<ProfileRow | null>(null);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteName, setInviteName] = useState("");
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteLevel, setInviteLevel] = useState("5");
+  const [inviting, setInviting] = useState(false);
+
+  const sendInvite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setInviting(true);
+    const { data, error } = await supabase.functions.invoke("invite-user", {
+      body: {
+        email: inviteEmail.trim(),
+        full_name: inviteName.trim(),
+        security_level: Number(inviteLevel),
+      },
+    });
+    setInviting(false);
+    const fnError = (data as { error?: string } | null)?.error;
+    if (error || fnError) {
+      toast.error(fnError || error?.message || "Failed to send invitation");
+      return;
+    }
+    toast.success(`Invitation sent to ${inviteEmail.trim()} — they'll appear in the list after they sign up`);
+    setInviteOpen(false);
+    setInviteName("");
+    setInviteEmail("");
+    setInviteLevel("5");
+    qc.invalidateQueries({ queryKey: ["portal-users"] });
+  };
 
   const { data: users = [], isLoading, error } = useQuery({
     queryKey: ["portal-users"],
@@ -108,10 +148,19 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
       <p className="text-sm text-muted-foreground mt-1 mb-6">User & access management</p>
 
       <section className="bg-card rounded-lg border border-border p-6">
-        <h2 className="text-lg font-heading font-semibold text-foreground">User & Access Management</h2>
-        <p className="text-sm text-muted-foreground mt-1 mb-4">
-          Control which portal users can see which employees.
-        </p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-heading font-semibold text-foreground">User & Access Management</h2>
+            <p className="text-sm text-muted-foreground mt-1 mb-4">
+              Control which portal users can see which employees.
+            </p>
+          </div>
+          {isAdmin && (
+            <Button size="sm" onClick={() => setInviteOpen(true)}>
+              <UserPlus className="h-4 w-4 mr-1.5" /> Invite User
+            </Button>
+          )}
+        </div>
 
         {!isAdmin && (
           <div className="rounded-md border border-border bg-muted/40 p-4 flex items-start gap-3">
@@ -220,6 +269,47 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
           </>
         )}
       </section>
+
+      <Dialog open={inviteOpen} onOpenChange={(o) => !inviting && setInviteOpen(o)}>
+        <DialogContent>
+          <form onSubmit={sendInvite}>
+            <DialogHeader>
+              <DialogTitle>Invite New User</DialogTitle>
+              <DialogDescription>
+                The user will receive an email with a signup link. Their profile appears here after they complete signup.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="invite-name">Full name</Label>
+                <Input id="invite-name" required value={inviteName} onChange={(e) => setInviteName(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="invite-email">Email</Label>
+                <Input id="invite-email" type="email" required value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Initial Security Level</Label>
+                <Select value={inviteLevel} onValueChange={setInviteLevel}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {[1, 2, 3, 4, 5].map((lvl) => (
+                      <SelectItem key={lvl} value={String(lvl)}>{LEVEL_LABELS[lvl]}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" disabled={inviting} onClick={() => setInviteOpen(false)}>Cancel</Button>
+              <Button type="submit" disabled={inviting}>
+                {inviting ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> Sending…</> : "Send Invite"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
 
       {isAdmin && permissions.can_manage_lookups && (
         <>

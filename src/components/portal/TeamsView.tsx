@@ -1,24 +1,26 @@
 import { useState } from "react";
-import { departmentBadgeClass, potentialColors, type Employee, type Department } from "@/data/employees";
-import { Star, Users, Shield, Calculator, Lightbulb, Settings, ChevronDown } from "lucide-react";
+import { departmentBadgeClass, potentialColors, type Employee } from "@/data/employees";
+import { Star, Users, Shield, Calculator, Lightbulb, Settings, ChevronDown, Building2, Loader2 } from "lucide-react";
 import { averageRating, formatAverage } from "@/lib/ratings";
+import { useDepartmentNames } from "@/hooks/useLookups";
 
 interface TeamsViewProps {
   employees: Employee[];
   onSelectEmployee: (emp: Employee) => void;
 }
 
-const deptOrder: Department[] = ["Assurance", "Tax", "Advisory", "Operations"];
-
-const deptIcons: Record<Department, React.ReactNode> = {
+const legacyDeptIcons: Record<string, React.ReactNode> = {
   Assurance: <Shield className="h-5 w-5" />,
   Tax: <Calculator className="h-5 w-5" />,
   Advisory: <Lightbulb className="h-5 w-5" />,
   Operations: <Settings className="h-5 w-5" />,
 };
 
+const deptIcon = (dept: string) => legacyDeptIcons[dept] ?? <Building2 className="h-5 w-5" />;
+
 const TeamsView = ({ employees, onSelectEmployee }: TeamsViewProps) => {
-  const [selectedDept, setSelectedDept] = useState<Department | null>(null);
+  const [selectedDept, setSelectedDept] = useState<string | null>(null);
+  const { names: deptOrder, isLoading } = useDepartmentNames();
 
   const grouped = deptOrder.map((dept) => {
     const members = employees.filter((e) => e.department === dept);
@@ -36,8 +38,21 @@ const TeamsView = ({ employees, onSelectEmployee }: TeamsViewProps) => {
         <p className="text-sm text-muted-foreground mt-1">Click a department to view its members</p>
       </div>
 
+      {isLoading && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground py-6">
+          <Loader2 className="h-4 w-4 animate-spin" /> Loading teams…
+        </div>
+      )}
+
+      {!isLoading && deptOrder.length === 0 && (
+        <div className="rounded-md border border-border bg-muted/30 p-4 text-sm text-muted-foreground">
+          No departments configured. Add some in Settings → Manage Departments.
+        </div>
+      )}
+
       {/* Department Cards Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {!isLoading && deptOrder.length > 0 && (
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {grouped.map(({ dept, members, avgRating }) => {
           const isActive = selectedDept === dept;
           return (
@@ -52,7 +67,7 @@ const TeamsView = ({ employees, onSelectEmployee }: TeamsViewProps) => {
             >
               <div className="flex items-center justify-between mb-3">
                 <span className={`inline-flex items-center justify-center w-10 h-10 rounded-lg ${departmentBadgeClass(dept)}`}>
-                  {deptIcons[dept]}
+                  {deptIcon(dept)}
                 </span>
                 <ChevronDown
                   className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${
@@ -75,6 +90,7 @@ const TeamsView = ({ employees, onSelectEmployee }: TeamsViewProps) => {
           );
         })}
       </div>
+      )}
 
       {/* Expanded Member Table */}
       {activeDept && activeDept.members.length > 0 && (
