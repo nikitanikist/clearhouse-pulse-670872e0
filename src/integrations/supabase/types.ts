@@ -318,18 +318,21 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string
+          custom_permissions: Json | null
           full_name: string
           security_level: number
           user_id: string
         }
         Insert: {
           created_at?: string
+          custom_permissions?: Json | null
           full_name?: string
           security_level: number
           user_id: string
         }
         Update: {
           created_at?: string
+          custom_permissions?: Json | null
           full_name?: string
           security_level?: number
           user_id?: string
