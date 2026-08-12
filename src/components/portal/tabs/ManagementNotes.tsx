@@ -97,26 +97,29 @@ const ManagementNotes = ({ employeeId, authorName }: ManagementNotesProps) => {
 
   return (
     <div className="space-y-6">
-      <div className="bg-card rounded-lg border border-border shadow-sm p-6">
-        <h3 className="text-base font-heading font-bold text-foreground mb-3">Add Note</h3>
-        <Label htmlFor="new-note" className="sr-only">New management note</Label>
-        <textarea
-          id="new-note"
-          value={newNote}
-          onChange={(e) => setNewNote(e.target.value)}
-          placeholder="Write a management note..."
-          className="w-full px-4 py-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
-          rows={3}
-        />
-        <button
-          onClick={addNote}
-          disabled={saving || !newNote.trim()}
-          className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
-        >
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-          Add Note
-        </button>
-      </div>
+      {permissions.can_manage_notes && (
+        <div className="bg-card rounded-lg border border-border shadow-sm p-6">
+          <h3 className="text-base font-heading font-bold text-foreground mb-3">Add Note</h3>
+          <Label htmlFor="new-note" className="sr-only">New management note</Label>
+          <textarea
+            id="new-note"
+            value={newNote}
+            onChange={(e) => setNewNote(e.target.value)}
+            placeholder="Write a management note..."
+            className="w-full px-4 py-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+            rows={3}
+          />
+          <button
+            onClick={addNote}
+            disabled={saving || !newNote.trim()}
+            className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
+          >
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+            Add Note
+          </button>
+        </div>
+      )}
+
 
       <div className="bg-card rounded-lg border border-border shadow-sm overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/20">
