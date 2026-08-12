@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { Search, Filter, Plus, Loader2, X } from "lucide-react";
+import { usePermissions } from "@/hooks/usePermissions";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
@@ -206,12 +207,14 @@ const EmployeeDirectory = ({ employees, onSelectEmployee, initialFilters }: Empl
               {filtered.length} {filtered.length === 1 ? "person" : "people"}
             </Badge>
           </div>
-          <button
-            onClick={() => setAddOpen(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors"
-          >
-            <Plus className="h-4 w-4" /> Add Employee
-          </button>
+          {permissions.can_add_employee && (
+            <button
+              onClick={() => setAddOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors"
+            >
+              <Plus className="h-4 w-4" /> Add Employee
+            </button>
+          )}
         </div>
 
         {/* Search + Filter Bar */}
