@@ -81,6 +81,35 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
   const [pending, setPending] = useState<PendingChange | null>(null);
   const [applying, setApplying] = useState(false);
   const [permTarget, setPermTarget] = useState<ProfileRow | null>(null);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteName, setInviteName] = useState("");
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteLevel, setInviteLevel] = useState("5");
+  const [inviting, setInviting] = useState(false);
+
+  const sendInvite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setInviting(true);
+    const { data, error } = await supabase.functions.invoke("invite-user", {
+      body: {
+        email: inviteEmail.trim(),
+        full_name: inviteName.trim(),
+        security_level: Number(inviteLevel),
+      },
+    });
+    setInviting(false);
+    const fnError = (data as { error?: string } | null)?.error;
+    if (error || fnError) {
+      toast.error(fnError || error?.message || "Failed to send invitation");
+      return;
+    }
+    toast.success(`Invitation sent to ${inviteEmail.trim()} — they'll appear in the list after they sign up`);
+    setInviteOpen(false);
+    setInviteName("");
+    setInviteEmail("");
+    setInviteLevel("5");
+    qc.invalidateQueries({ queryKey: ["portal-users"] });
+  };
 
   const { data: users = [], isLoading, error } = useQuery({
     queryKey: ["portal-users"],
