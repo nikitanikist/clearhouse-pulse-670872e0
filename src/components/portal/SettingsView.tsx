@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, ShieldAlert, SlidersHorizontal } from "lucide-react";
+import { Loader2, ShieldAlert, SlidersHorizontal, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { DepartmentsCard, PositionsCard } from "@/components/portal/settings/LookupManagers";
@@ -8,6 +8,17 @@ import DataImport from "@/components/portal/settings/DataImport";
 import PermissionsDialog from "@/components/portal/settings/PermissionsDialog";
 import { usePermissions } from "@/hooks/usePermissions";
 import type { Permissions } from "@/lib/permissions";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 import {
   Select,
