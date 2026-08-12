@@ -183,16 +183,25 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
                               </SelectContent>
                             </Select>
                           </td>
+                          <td className="px-4 py-2 text-right">
+                            <button
+                              onClick={() => setPermTarget(u)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                            >
+                              <SlidersHorizontal className="h-3.5 w-3.5" /> Permissions
+                            </button>
+                          </td>
                         </tr>
                       );
                     })}
                     {users.length === 0 && (
                       <tr>
-                        <td colSpan={2} className="px-4 py-6 text-center text-muted-foreground">
+                        <td colSpan={3} className="px-4 py-6 text-center text-muted-foreground">
                           No users found.
                         </td>
                       </tr>
                     )}
+
                   </tbody>
                 </table>
               </div>
