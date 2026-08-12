@@ -65,9 +65,11 @@ interface PendingChange {
 
 const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
   const qc = useQueryClient();
+  const permissions = usePermissions();
   const isAdmin = securityLevel === 1;
   const [pending, setPending] = useState<PendingChange | null>(null);
   const [applying, setApplying] = useState(false);
+  const [permTarget, setPermTarget] = useState<ProfileRow | null>(null);
 
   const { data: users = [], isLoading, error } = useQuery({
     queryKey: ["portal-users"],
@@ -75,11 +77,12 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
     queryFn: async (): Promise<ProfileRow[]> => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("user_id, full_name, security_level")
+        .select("user_id, full_name, security_level, custom_permissions")
         .order("security_level", { ascending: true });
       if (error) throw error;
-      return (data ?? []) as ProfileRow[];
+      return (data ?? []) as unknown as ProfileRow[];
     },
+
   });
 
   const applyChange = async () => {
