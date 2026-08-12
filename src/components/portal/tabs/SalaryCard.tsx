@@ -28,6 +28,8 @@ const emptyForm = (): FormState => ({
 
 const SalaryCard = ({ employeeId, employeeName }: { employeeId: string; employeeName: string }) => {
   const queryClient = useQueryClient();
+  const permissions = usePermissions();
+
   const { data: entries = [], isLoading } = useSalaryHistory(employeeId);
   const [showAll, setShowAll] = useState(false);
   const [manageOpen, setManageOpen] = useState(false);
