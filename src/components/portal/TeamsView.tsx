@@ -1,24 +1,26 @@
 import { useState } from "react";
-import { departmentBadgeClass, potentialColors, type Employee, type Department } from "@/data/employees";
-import { Star, Users, Shield, Calculator, Lightbulb, Settings, ChevronDown } from "lucide-react";
+import { departmentBadgeClass, potentialColors, type Employee } from "@/data/employees";
+import { Star, Users, Shield, Calculator, Lightbulb, Settings, ChevronDown, Building2, Loader2 } from "lucide-react";
 import { averageRating, formatAverage } from "@/lib/ratings";
+import { useDepartmentNames } from "@/hooks/useLookups";
 
 interface TeamsViewProps {
   employees: Employee[];
   onSelectEmployee: (emp: Employee) => void;
 }
 
-const deptOrder: Department[] = ["Assurance", "Tax", "Advisory", "Operations"];
-
-const deptIcons: Record<Department, React.ReactNode> = {
+const legacyDeptIcons: Record<string, React.ReactNode> = {
   Assurance: <Shield className="h-5 w-5" />,
   Tax: <Calculator className="h-5 w-5" />,
   Advisory: <Lightbulb className="h-5 w-5" />,
   Operations: <Settings className="h-5 w-5" />,
 };
 
+const deptIcon = (dept: string) => legacyDeptIcons[dept] ?? <Building2 className="h-5 w-5" />;
+
 const TeamsView = ({ employees, onSelectEmployee }: TeamsViewProps) => {
-  const [selectedDept, setSelectedDept] = useState<Department | null>(null);
+  const [selectedDept, setSelectedDept] = useState<string | null>(null);
+  const { names: deptOrder, isLoading } = useDepartmentNames();
 
   const grouped = deptOrder.map((dept) => {
     const members = employees.filter((e) => e.department === dept);
