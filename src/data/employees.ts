@@ -61,7 +61,7 @@ export const potentialColors: Record<PotentialRating, string> = {
   "Ready Later": "bg-muted-foreground",
 };
 
-export type SecurityLevel = 1 | 2 | 3 | 4 | 5;
+export type SecurityLevel = 1 | 2 | 3 | 4 | 5 | 6;
 
 // Empty array kept so legacy components that still import `employees` directly
 // (Sidebar.tsx, EmployeeListPanel.tsx are unused but reference it) compile.

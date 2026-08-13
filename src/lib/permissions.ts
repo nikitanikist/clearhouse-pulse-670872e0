@@ -71,6 +71,9 @@ export function getDefaultPermissions(level: number): Permissions {
         can_manage_lookups: false,
         can_import_data: false,
       };
+    case 6:
+      // Employee self-service: read-only, no capabilities.
+      return all(false);
     default:
       return all(false);
   }

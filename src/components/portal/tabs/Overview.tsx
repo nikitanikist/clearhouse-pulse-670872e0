@@ -21,6 +21,7 @@ import { formatDateLong } from "@/lib/tenure";
 
 interface OverviewProps {
   employee: Employee;
+  readOnly?: boolean;
 }
 
 const Section = ({
@@ -401,7 +402,7 @@ const Overview = ({ employee }: OverviewProps) => {
                 <p className="text-xs text-muted-foreground">Last updated {formatDateLong(perfUpdated)}</p>
               )}
             </div>
-            {permissions.can_edit_performance && (
+            {!readOnly && permissions.can_edit_performance && (
               <button
                 onClick={() => setPerfEditOpen(true)}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
@@ -427,7 +428,7 @@ const Overview = ({ employee }: OverviewProps) => {
                 <div key={comp.id} className="bg-muted/30 rounded-lg border border-border p-4">
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <h4 className="text-sm font-heading font-bold text-foreground">{comp.competency_name}</h4>
-                    {permissions.can_edit_performance && (
+                    {!readOnly && permissions.can_edit_performance && (
                       <button
                         onClick={() => setEditingComp(comp)}
                         className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
@@ -511,7 +512,7 @@ const Overview = ({ employee }: OverviewProps) => {
         isOpen={openSection === "pdrs"}
         onToggle={() => toggle("pdrs")}
       >
-        <PdrUploader employeeId={employee.id} onParsed={setParsed} />
+        {!readOnly && <PdrUploader employeeId={employee.id} onParsed={setParsed} />}
 
         <div className="mt-4 overflow-x-auto">
           <table className="w-full text-sm">
