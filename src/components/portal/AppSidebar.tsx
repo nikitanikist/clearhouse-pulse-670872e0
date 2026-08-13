@@ -9,6 +9,7 @@ const securityLabels: Record<SecurityLevel, string> = {
   3: "Level 3: Senior Associate and below",
   4: "Level 4: Intermediate & Associate",
   5: "Level 5: Operations only",
+  6: "Level 6: My record only",
 };
 
 interface AppSidebarProps {
