@@ -342,7 +342,7 @@ const EditCompetencyDialog = ({
   );
 };
 
-const Overview = ({ employee }: OverviewProps) => {
+const Overview = ({ employee, readOnly = false }: OverviewProps) => {
   const [openSection, setOpenSection] = useState<string | null>(null);
   const [parsed, setParsed] = useState<ParsedPdr | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -534,14 +534,14 @@ const Overview = ({ employee }: OverviewProps) => {
                     <div className="flex gap-2">
                       <button className="text-primary hover:text-primary/80 transition-colors" title="View"><Eye className="h-4 w-4" /></button>
                       <button className="text-primary hover:text-primary/80 transition-colors" title="Download"><Download className="h-4 w-4" /></button>
-                      <button
+                      {!readOnly && <button
                         onClick={() => handleDeletePdr(doc.id, doc.file_path)}
                         disabled={deletingId === doc.id}
                         className="text-destructive hover:text-destructive/80 transition-colors disabled:opacity-50"
                         title="Delete"
                       >
                         {deletingId === doc.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                      </button>
+                      </button>}
                     </div>
                   </td>
                 </tr>
