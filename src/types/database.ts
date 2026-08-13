@@ -32,7 +32,7 @@ export type InterpersonalArea =
 export interface ProfileRow {
   user_id: string;
   full_name: string;
-  security_level: 1 | 2 | 3 | 4 | 5;
+  security_level: 1 | 2 | 3 | 4 | 5 | 6;
   custom_permissions: Record<string, boolean> | null;
   created_at: string;
 }
