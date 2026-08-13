@@ -29,6 +29,11 @@ const tabs = [
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user, profile, signOut } = useAuth();
+
+  // Level 6 (employee self-service) may never reach a manager screen.
+  useEffect(() => {
+    if (profile?.security_level === 6) navigate("/my-record", { replace: true });
+  }, [profile, navigate]);
   const securityLevel: SecurityLevel = (profile?.security_level ?? 1) as SecurityLevel;
 
 

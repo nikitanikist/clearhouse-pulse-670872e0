@@ -48,8 +48,8 @@ Deno.serve(async (req) => {
 
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json({ error: "A valid email is required" }, 400);
   if (full_name.length < 1 || full_name.length > 255) return json({ error: "Full name is required" }, 400);
-  if (!Number.isInteger(security_level) || security_level < 1 || security_level > 5) {
-    return json({ error: "Security level must be between 1 and 5" }, 400);
+  if (!Number.isInteger(security_level) || security_level < 1 || security_level > 6) {
+    return json({ error: "Security level must be between 1 and 6" }, 400);
   }
 
   const admin = createClient(SUPABASE_URL, SERVICE_KEY, {
