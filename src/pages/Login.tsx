@@ -8,14 +8,16 @@ import { toast } from "sonner";
 
 const Login = () => {
   const navigate = useNavigate();
-  const { user, loading, signIn } = useAuth();
+  const { user, loading, profile, signIn } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (!loading && user) navigate("/dashboard", { replace: true });
-  }, [user, loading, navigate]);
+    if (!loading && user) {
+      navigate(profile?.security_level === 6 ? "/my-record" : "/dashboard", { replace: true });
+    }
+  }, [user, loading, profile, navigate]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();

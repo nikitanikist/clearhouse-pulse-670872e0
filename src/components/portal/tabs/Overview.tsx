@@ -21,6 +21,7 @@ import { formatDateLong } from "@/lib/tenure";
 
 interface OverviewProps {
   employee: Employee;
+  readOnly?: boolean;
 }
 
 const Section = ({
@@ -341,7 +342,7 @@ const EditCompetencyDialog = ({
   );
 };
 
-const Overview = ({ employee }: OverviewProps) => {
+const Overview = ({ employee, readOnly = false }: OverviewProps) => {
   const [openSection, setOpenSection] = useState<string | null>(null);
   const [parsed, setParsed] = useState<ParsedPdr | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -401,7 +402,7 @@ const Overview = ({ employee }: OverviewProps) => {
                 <p className="text-xs text-muted-foreground">Last updated {formatDateLong(perfUpdated)}</p>
               )}
             </div>
-            {permissions.can_edit_performance && (
+            {!readOnly && permissions.can_edit_performance && (
               <button
                 onClick={() => setPerfEditOpen(true)}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
@@ -427,7 +428,7 @@ const Overview = ({ employee }: OverviewProps) => {
                 <div key={comp.id} className="bg-muted/30 rounded-lg border border-border p-4">
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <h4 className="text-sm font-heading font-bold text-foreground">{comp.competency_name}</h4>
-                    {permissions.can_edit_performance && (
+                    {!readOnly && permissions.can_edit_performance && (
                       <button
                         onClick={() => setEditingComp(comp)}
                         className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
@@ -511,7 +512,7 @@ const Overview = ({ employee }: OverviewProps) => {
         isOpen={openSection === "pdrs"}
         onToggle={() => toggle("pdrs")}
       >
-        <PdrUploader employeeId={employee.id} onParsed={setParsed} />
+        {!readOnly && <PdrUploader employeeId={employee.id} onParsed={setParsed} />}
 
         <div className="mt-4 overflow-x-auto">
           <table className="w-full text-sm">
@@ -533,14 +534,14 @@ const Overview = ({ employee }: OverviewProps) => {
                     <div className="flex gap-2">
                       <button className="text-primary hover:text-primary/80 transition-colors" title="View"><Eye className="h-4 w-4" /></button>
                       <button className="text-primary hover:text-primary/80 transition-colors" title="Download"><Download className="h-4 w-4" /></button>
-                      <button
+                      {!readOnly && <button
                         onClick={() => handleDeletePdr(doc.id, doc.file_path)}
                         disabled={deletingId === doc.id}
                         className="text-destructive hover:text-destructive/80 transition-colors disabled:opacity-50"
                         title="Delete"
                       >
                         {deletingId === doc.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                      </button>
+                      </button>}
                     </div>
                   </td>
                 </tr>

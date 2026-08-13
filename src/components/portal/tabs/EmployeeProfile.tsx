@@ -36,7 +36,7 @@ const Field = ({ icon: Icon, label, value }: { icon: any; label: string; value: 
   </div>
 );
 
-const EmployeeProfile = ({ employee }: { employee: Employee }) => {
+const EmployeeProfile = ({ employee, readOnly = false }: { employee: Employee; readOnly?: boolean }) => {
   const { names: positions } = usePositionNames();
   const { names: departments } = useDepartmentNames();
   const queryClient = useQueryClient();
@@ -144,7 +144,7 @@ const EmployeeProfile = ({ employee }: { employee: Employee }) => {
             <p className="text-sm text-muted-foreground">{local.position} · {local.department}</p>
           </div>
         </div>
-        {!editing && permissions.can_edit_profile && (
+        {!editing && !readOnly && permissions.can_edit_profile && (
           <button
             onClick={() => setEditing(true)}
             className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-border text-sm font-medium hover:bg-muted transition-colors"
@@ -263,7 +263,7 @@ const EmployeeProfile = ({ employee }: { employee: Employee }) => {
         </div>
       )}
     </div>
-    <SalaryCard employeeId={employee.id} employeeName={local.name} />
+    <SalaryCard employeeId={employee.id} employeeName={local.name} readOnly={readOnly} />
     </>
   );
 

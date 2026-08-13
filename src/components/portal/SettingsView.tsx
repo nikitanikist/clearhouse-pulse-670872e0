@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, ShieldAlert, SlidersHorizontal, UserPlus } from "lucide-react";
+import { Loader2, ShieldAlert, SlidersHorizontal, UserPlus, Users } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { DepartmentsCard, PositionsCard } from "@/components/portal/settings/LookupManagers";
@@ -57,6 +57,7 @@ const LEVEL_LABELS: Record<number, string> = {
   3: "Level 3 (Senior Associate & below)",
   4: "Level 4 (Intermediate & below)",
   5: "Level 5 (Operations only)",
+  6: "Level 6 (Employee — own record only)",
 };
 
 const LEGEND: { level: number; desc: string }[] = [
@@ -65,6 +66,7 @@ const LEGEND: { level: number; desc: string }[] = [
   { level: 3, desc: "Senior Associates and below (Intermediate, Associate)." },
   { level: 4, desc: "Intermediates and Associates only." },
   { level: 5, desc: "Operations staff only." },
+  { level: 6, desc: "Employee self-service — can view only their own record, read-only." },
 ];
 
 interface PendingChange {
@@ -86,6 +88,73 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteLevel, setInviteLevel] = useState("5");
   const [inviting, setInviting] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkRunning, setBulkRunning] = useState(false);
+  const [bulkCandidates, setBulkCandidates] = useState<{ email: string; name: string }[]>([]);
+
+  const isValidEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+
+  const openBulkInvite = async () => {
+    const { data, error } = await supabase.from("employees").select("name, email");
+    if (error) {
+      toast.error("Could not load employees", { description: error.message });
+      return;
+    }
+    const existing = new Set(
+      users.map((u) => (u.full_name ?? "").toLowerCase()),
+    );
+    const seen = new Set<string>();
+    const candidates: { email: string; name: string }[] = [];
+    for (const row of (data ?? []) as { name: string; email: string }[]) {
+      const email = (row.email ?? "").trim().toLowerCase();
+      if (!isValidEmail(email) || seen.has(email)) continue;
+      seen.add(email);
+      candidates.push({ email, name: row.name });
+    }
+    void existing;
+    setBulkCandidates(candidates);
+    setBulkOpen(true);
+  };
+
+  const runBulkInvite = async () => {
+    setBulkRunning(true);
+    let sent = 0;
+    let skipped = 0;
+    const total = bulkCandidates.length;
+    const toastId = toast.loading(`Sent 0 of ${total} invites…`);
+
+    for (const c of bulkCandidates) {
+      let ok = false;
+      for (let attempt = 0; attempt < 3 && !ok; attempt++) {
+        const { data, error } = await supabase.functions.invoke("invite-user", {
+          body: { email: c.email, full_name: c.name, security_level: 6 },
+        });
+        const fnError = (data as { error?: string } | null)?.error;
+        if (!error && !fnError) {
+          ok = true;
+          break;
+        }
+        const message = (fnError || error?.message || "").toLowerCase();
+        if (message.includes("already") || message.includes("registered")) break;
+        if (message.includes("rate") || message.includes("429")) {
+          await new Promise((r) => setTimeout(r, 500));
+          continue;
+        }
+        break;
+      }
+      if (ok) sent++;
+      else skipped++;
+      toast.loading(`Sent ${sent} of ${total} invites…`, { id: toastId });
+    }
+
+    setBulkRunning(false);
+    setBulkOpen(false);
+    toast.success(
+      `Invited ${sent} new employees. They'll appear in the users list after they sign up. Skipped ${skipped} with missing/invalid email or already-invited.`,
+      { id: toastId },
+    );
+    qc.invalidateQueries({ queryKey: ["portal-users"] });
+  };
 
   const sendInvite = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -156,9 +225,14 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
             </p>
           </div>
           {isAdmin && (
-            <Button size="sm" onClick={() => setInviteOpen(true)}>
-              <UserPlus className="h-4 w-4 mr-1.5" /> Invite User
-            </Button>
+            <div className="flex flex-wrap gap-2 justify-end">
+              <Button size="sm" variant="outline" onClick={openBulkInvite}>
+                <Users className="h-4 w-4 mr-1.5" /> Invite all employees as Self-Service (L6)
+              </Button>
+              <Button size="sm" onClick={() => setInviteOpen(true)}>
+                <UserPlus className="h-4 w-4 mr-1.5" /> Invite User
+              </Button>
+            </div>
           )}
         </div>
 
@@ -224,7 +298,7 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                {[1, 2, 3, 4, 5].map((lvl) => (
+                                {[1, 2, 3, 4, 5, 6].map((lvl) => (
                                   <SelectItem key={lvl} value={String(lvl)}>
                                     {LEVEL_LABELS[lvl]}
                                   </SelectItem>
@@ -270,6 +344,23 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
         )}
       </section>
 
+      <AlertDialog open={bulkOpen} onOpenChange={(o) => !bulkRunning && setBulkOpen(o)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Invite employees as self-service users?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will email {bulkCandidates.length} employees a signup link. Continue?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkRunning}>Cancel</AlertDialogCancel>
+            <AlertDialogAction disabled={bulkRunning || bulkCandidates.length === 0} onClick={(e) => { e.preventDefault(); runBulkInvite(); }}>
+              {bulkRunning ? "Sending…" : "Send invites"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <Dialog open={inviteOpen} onOpenChange={(o) => !inviting && setInviteOpen(o)}>
         <DialogContent>
           <form onSubmit={sendInvite}>
@@ -293,7 +384,7 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
                 <Select value={inviteLevel} onValueChange={setInviteLevel}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {[1, 2, 3, 4, 5].map((lvl) => (
+                    {[1, 2, 3, 4, 5, 6].map((lvl) => (
                       <SelectItem key={lvl} value={String(lvl)}>{LEVEL_LABELS[lvl]}</SelectItem>
                     ))}
                   </SelectContent>

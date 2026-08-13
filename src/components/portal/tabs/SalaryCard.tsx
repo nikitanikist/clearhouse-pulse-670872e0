@@ -26,7 +26,7 @@ const emptyForm = (): FormState => ({
   notes: "",
 });
 
-const SalaryCard = ({ employeeId, employeeName }: { employeeId: string; employeeName: string }) => {
+const SalaryCard = ({ employeeId, employeeName, readOnly = false }: { employeeId: string; employeeName: string; readOnly?: boolean }) => {
   const queryClient = useQueryClient();
   const permissions = usePermissions();
 
@@ -89,7 +89,7 @@ const SalaryCard = ({ employeeId, employeeName }: { employeeId: string; employee
   const selectCls =
     "mt-1.5 w-full px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary";
 
-  if (!permissions.can_view_salary) return null;
+  if (!readOnly && !permissions.can_view_salary) return null;
 
   return (
 
@@ -98,7 +98,7 @@ const SalaryCard = ({ employeeId, employeeName }: { employeeId: string; employee
         <h3 className="text-base font-heading font-bold text-foreground flex items-center gap-2">
           <DollarSign className="h-4 w-4 text-primary" /> Salary
         </h3>
-        {permissions.can_edit_salary && (
+        {!readOnly && permissions.can_edit_salary && (
           <button
             onClick={() => setManageOpen(true)}
             className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-border text-sm font-medium hover:bg-muted transition-colors"

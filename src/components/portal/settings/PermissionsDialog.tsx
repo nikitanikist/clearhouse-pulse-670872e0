@@ -93,6 +93,7 @@ const PermissionsDialog = ({
   };
 
   const busy = saving || resetting;
+  const selfService = securityLevel === 6;
 
   return (
     <Dialog open={open} onOpenChange={(o) => !busy && onOpenChange(o)}>
@@ -104,6 +105,11 @@ const PermissionsDialog = ({
         </DialogHeader>
 
         <div className="space-y-5">
+          {selfService && (
+            <div className="rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
+              This user is self-service (view-only); permission toggles do not apply.
+            </div>
+          )}
           {PERMISSION_GROUPS.map((group) => (
             <div key={group.title}>
               <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
@@ -115,6 +121,7 @@ const PermissionsDialog = ({
                     <Switch
                       id={`perm-${key}`}
                       checked={values[key]}
+                      disabled={selfService}
                       onCheckedChange={(checked) =>
                         setValues((v) => ({ ...v, [key]: checked }))
                       }
