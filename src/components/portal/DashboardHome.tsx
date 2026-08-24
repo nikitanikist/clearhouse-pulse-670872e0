@@ -48,7 +48,7 @@ const DashboardHome = ({ employees, onNavigateToEmployee, onNavigateToSection }:
         <StatCard
           icon={Building2}
           label="Departments"
-          value={String(Object.keys(deptCounts).length)}
+          value={deptsLoading ? "…" : String(departments.length)}
           onClick={() => onNavigateToSection?.("teams")}
         />
         <StatCard
