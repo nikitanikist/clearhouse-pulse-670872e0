@@ -14,6 +14,66 @@ export type Database = {
   }
   public: {
     Tables: {
+      access_rules: {
+        Row: {
+          can_add_employee: boolean | null
+          can_edit_employee_profile: boolean | null
+          can_edit_growth: boolean | null
+          can_edit_interpersonal: boolean | null
+          can_edit_notes: boolean | null
+          can_edit_performance: boolean | null
+          can_import_data: boolean | null
+          can_manage_access_rules: boolean | null
+          can_manage_lookups: boolean | null
+          can_manage_users: boolean | null
+          created_at: string | null
+          notes_scope: string
+          notes_visible_position_titles: Json | null
+          position: string
+          updated_at: string | null
+          visibility_scope: string
+          visible_position_titles: Json | null
+        }
+        Insert: {
+          can_add_employee?: boolean | null
+          can_edit_employee_profile?: boolean | null
+          can_edit_growth?: boolean | null
+          can_edit_interpersonal?: boolean | null
+          can_edit_notes?: boolean | null
+          can_edit_performance?: boolean | null
+          can_import_data?: boolean | null
+          can_manage_access_rules?: boolean | null
+          can_manage_lookups?: boolean | null
+          can_manage_users?: boolean | null
+          created_at?: string | null
+          notes_scope: string
+          notes_visible_position_titles?: Json | null
+          position: string
+          updated_at?: string | null
+          visibility_scope: string
+          visible_position_titles?: Json | null
+        }
+        Update: {
+          can_add_employee?: boolean | null
+          can_edit_employee_profile?: boolean | null
+          can_edit_growth?: boolean | null
+          can_edit_interpersonal?: boolean | null
+          can_edit_notes?: boolean | null
+          can_edit_performance?: boolean | null
+          can_import_data?: boolean | null
+          can_manage_access_rules?: boolean | null
+          can_manage_lookups?: boolean | null
+          can_manage_users?: boolean | null
+          created_at?: string | null
+          notes_scope?: string
+          notes_visible_position_titles?: Json | null
+          position?: string
+          updated_at?: string | null
+          visibility_scope?: string
+          visible_position_titles?: Json | null
+        }
+        Relationships: []
+      }
       departments: {
         Row: {
           created_at: string
@@ -345,7 +405,15 @@ export type Database = {
     }
     Functions: {
       can_view_employee: { Args: { p: string }; Returns: boolean }
+      can_view_employee_row: { Args: { emp_id: string }; Returns: boolean }
+      can_view_notes: { Args: { emp_id: string }; Returns: boolean }
       current_security_level: { Args: never; Returns: number }
+      current_user_can: { Args: { cap: string }; Returns: boolean }
+      current_user_department: { Args: never; Returns: string }
+      current_user_employee_id: { Args: never; Returns: string }
+      current_user_location: { Args: never; Returns: string }
+      current_user_name: { Args: never; Returns: string }
+      current_user_position: { Args: never; Returns: string }
     }
     Enums: {
       competency_rating: "E" | "G" | "M" | "NI"
