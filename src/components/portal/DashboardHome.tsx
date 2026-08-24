@@ -1,6 +1,7 @@
 import { Users, Building2, TrendingUp, Star, ArrowUpRight } from "lucide-react";
 import type { Employee } from "@/data/employees";
 import { departmentBadgeClass } from "@/data/employees";
+import { useDepartments } from "@/hooks/useLookups";
 import { averageRating, formatAverage } from "@/lib/ratings";
 
 export interface SectionFilters {
@@ -15,6 +16,7 @@ interface DashboardHomeProps {
 }
 
 const DashboardHome = ({ employees, onNavigateToEmployee, onNavigateToSection }: DashboardHomeProps) => {
+  const { data: departments = [], isLoading: deptsLoading } = useDepartments();
   const deptCounts = employees.reduce<Record<string, number>>((acc, e) => {
     acc[e.department] = (acc[e.department] || 0) + 1;
     return acc;
@@ -46,7 +48,7 @@ const DashboardHome = ({ employees, onNavigateToEmployee, onNavigateToSection }:
         <StatCard
           icon={Building2}
           label="Departments"
-          value={String(Object.keys(deptCounts).length)}
+          value={deptsLoading ? "…" : String(departments.length)}
           onClick={() => onNavigateToSection?.("teams")}
         />
         <StatCard

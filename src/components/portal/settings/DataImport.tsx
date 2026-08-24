@@ -31,28 +31,18 @@ const TEMPLATE_HEADERS = [
   "Current Year Rating",
   "Current Year Rating Code",
   "Potential Rating",
-  "Currency",
-  "Annual Salary 2024",
-  "Annual Salary 2025",
 ];
 
 const TEMPLATE_ROWS = [
-  ["Jane Doe", "Assurance", "Manager", "Canada", "Alex Smith", "jane@firm.com", "416-555-0101", "2019-04-01", "2023-01-15", "4.2", "G", "Ready Soon", "CAD", "95000", "102000"],
-  ["Ravi Kumar", "Tax", "Associate", "India", "Jane Doe", "ravi@firm.com", "", "2022-07-11", "2022-07-11", "3.5", "M", "Well Placed", "INR", "800000", "880000"],
+  ["Jane Doe", "Assurance", "Manager", "Canada", "Alex Smith", "jane@firm.com", "416-555-0101", "2019-04-01", "2023-01-15", "4.2", "G", "Ready Soon"],
+  ["Ravi Kumar", "Tax", "Associate", "India", "Jane Doe", "ravi@firm.com", "", "2022-07-11", "2022-07-11", "3.5", "M", "Well Placed"],
 ];
-
-interface SalaryEntry {
-  year: number;
-  annual_salary: number;
-  currency: string;
-}
 
 interface ParsedRow {
   index: number;
   errors: string[];
   raw: Record<string, string>;
   employee: Record<string, unknown>;
-  salaries: SalaryEntry[];
 }
 
 const norm = (s: string) => s.trim().toLowerCase();
@@ -159,12 +149,6 @@ const DataImport = () => {
     headers.forEach((h, i) => {
       if (h) lookup.set(norm(h), i);
     });
-    const salaryCols: { year: number; idx: number }[] = [];
-    headers.forEach((h, i) => {
-      const m = norm(h).match(/^annual salary (\d{4})$/);
-      if (m) salaryCols.push({ year: Number(m[1]), idx: i });
-    });
-
     return matrix.slice(1).map((cells, i) => {
       const get = (...names: string[]) => {
         for (const n of names) {
@@ -218,20 +202,6 @@ const DataImport = () => {
       if (potentialRaw && !potential)
         errors.push(`Potential Rating '${potentialRaw}' is invalid`);
 
-      const currency = get("Currency") || "CAD";
-      const salaries: SalaryEntry[] = [];
-      for (const sc of salaryCols) {
-        const v = cells[sc.idx];
-        const s = v === undefined ? "" : String(v).trim().replace(/[$,\s]/g, "");
-        if (!s) continue;
-        const n = Number(s);
-        if (isNaN(n)) {
-          errors.push(`Annual Salary ${sc.year} '${v}' is not a number`);
-          continue;
-        }
-        salaries.push({ year: sc.year, annual_salary: n, currency });
-      }
-
       return {
         index: i + 2,
         errors,
@@ -250,7 +220,6 @@ const DataImport = () => {
           current_year_rating_code: codeRaw ? codeRaw.toUpperCase() : "M",
           potential_rating: potential ?? "Well Placed",
         },
-        salaries,
       };
     });
   };
@@ -296,33 +265,23 @@ const DataImport = () => {
     setImporting(true);
     const failures: string[] = [];
     let employeeCount = 0;
-    let salaryCount = 0;
 
     for (const row of validRows) {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from("employees")
-        .insert(row.employee as never)
-        .select("id")
-        .single();
-      if (error || !data) {
-        failures.push(`Row ${row.index} (${row.raw.name}): ${error?.message ?? "insert failed"}`);
+        .insert(row.employee as never);
+      if (error) {
+        failures.push(`Row ${row.index} (${row.raw.name}): ${error.message}`);
         continue;
       }
       employeeCount++;
-      for (const s of row.salaries) {
-        const { error: sErr } = await supabase
-          .from("salary_history")
-          .insert({ employee_id: (data as { id: string }).id, ...s } as never);
-        if (sErr) failures.push(`Row ${row.index} (${row.raw.name}) salary ${s.year}: ${sErr.message}`);
-        else salaryCount++;
-      }
     }
 
     setImporting(false);
     setCommitErrors(failures);
     qc.invalidateQueries({ queryKey: ["employees"] });
     toast.success(
-      `Imported ${employeeCount} employees • ${salaryCount} salary entries • ${
+      `Imported ${employeeCount} employees • ${
         validRows.length - employeeCount
       } rows failed at commit.`
     );
@@ -381,7 +340,7 @@ const DataImport = () => {
               <table className="w-full text-sm">
                 <thead className="bg-muted/40 sticky top-0">
                   <tr>
-                    {["Status", "Row", "Name", "Department", "Position", "Location", "Salary years"].map((h) => (
+                    {["Status", "Row", "Name", "Department", "Position", "Location"].map((h) => (
                       <th
                         key={h}
                         className="text-left px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider"
@@ -419,9 +378,6 @@ const DataImport = () => {
                       <td className="px-3 py-2">{r.raw.department || "—"}</td>
                       <td className="px-3 py-2">{r.raw.position || "—"}</td>
                       <td className="px-3 py-2">{r.raw.location || "—"}</td>
-                      <td className="px-3 py-2 text-muted-foreground">
-                        {r.salaries.map((s) => s.year).join(", ") || "—"}
-                      </td>
                     </tr>
                   ))}
                 </tbody>

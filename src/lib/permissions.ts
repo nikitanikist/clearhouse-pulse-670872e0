@@ -5,8 +5,6 @@ export interface Permissions {
   can_edit_interpersonal: boolean;
   can_edit_growth: boolean;
   can_manage_notes: boolean;
-  can_view_salary: boolean;
-  can_edit_salary: boolean;
   can_manage_lookups: boolean;
   can_import_data: boolean;
 }
@@ -20,8 +18,6 @@ export const PERMISSION_KEYS: PermissionKey[] = [
   "can_edit_interpersonal",
   "can_edit_growth",
   "can_manage_notes",
-  "can_view_salary",
-  "can_edit_salary",
   "can_manage_lookups",
   "can_import_data",
 ];
@@ -33,8 +29,6 @@ export const PERMISSION_LABELS: Record<PermissionKey, string> = {
   can_edit_interpersonal: "Edit interpersonal assessments",
   can_edit_growth: "Edit growth & potential",
   can_manage_notes: "Add and manage notes",
-  can_view_salary: "View salary information",
-  can_edit_salary: "Edit salary history",
   can_manage_lookups: "Manage departments & positions",
   can_import_data: "Import data from spreadsheets",
 };
@@ -46,7 +40,6 @@ export const PERMISSION_GROUPS: { title: string; keys: PermissionKey[] }[] = [
     keys: ["can_edit_performance", "can_edit_interpersonal", "can_edit_growth"],
   },
   { title: "Notes", keys: ["can_manage_notes"] },
-  { title: "Salary", keys: ["can_view_salary", "can_edit_salary"] },
   { title: "Administration", keys: ["can_manage_lookups", "can_import_data"] },
 ];
 
@@ -66,8 +59,6 @@ export function getDefaultPermissions(level: number): Permissions {
     case 4:
       return {
         ...all(true),
-        can_view_salary: false,
-        can_edit_salary: false,
         can_manage_lookups: false,
         can_import_data: false,
       };
