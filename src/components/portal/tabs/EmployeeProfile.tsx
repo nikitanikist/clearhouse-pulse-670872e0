@@ -21,7 +21,6 @@ import { useEmployees } from "@/hooks/useEmployees";
 import { useDepartmentNames, usePositionNames } from "@/hooks/useLookups";
 import SupervisorCombobox from "../SupervisorCombobox";
 import { formatTenure, formatDateLong } from "@/lib/tenure";
-import SalaryCard from "./SalaryCard";
 
 
 const locations: Location[] = ["Canada", "India"];
@@ -263,7 +262,6 @@ const EmployeeProfile = ({ employee, readOnly = false }: { employee: Employee; r
         </div>
       )}
     </div>
-    <SalaryCard employeeId={employee.id} employeeName={local.name} readOnly={readOnly} />
     </>
   );
 
