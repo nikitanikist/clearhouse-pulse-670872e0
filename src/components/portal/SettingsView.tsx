@@ -6,7 +6,9 @@ import { supabase } from "@/lib/supabase";
 import { DepartmentsCard, PositionsCard } from "@/components/portal/settings/LookupManagers";
 import DataImport from "@/components/portal/settings/DataImport";
 import PermissionsDialog from "@/components/portal/settings/PermissionsDialog";
+import AccessRulesCard from "@/components/portal/settings/AccessRulesCard";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useCanManageAccessRules } from "@/hooks/useAccessRules";
 import type { Permissions } from "@/lib/permissions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -80,6 +82,7 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
   const qc = useQueryClient();
   const permissions = usePermissions();
   const isAdmin = securityLevel === 1;
+  const { data: canManageRules = false } = useCanManageAccessRules();
   const [pending, setPending] = useState<PendingChange | null>(null);
   const [applying, setApplying] = useState(false);
   const [permTarget, setPermTarget] = useState<ProfileRow | null>(null);
@@ -401,6 +404,8 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
         </DialogContent>
       </Dialog>
 
+
+      {(isAdmin || canManageRules) && <AccessRulesCard />}
 
       {isAdmin && permissions.can_manage_lookups && (
         <>
