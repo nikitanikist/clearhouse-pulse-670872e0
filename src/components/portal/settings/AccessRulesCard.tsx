@@ -190,7 +190,7 @@ const AccessRulesCard = () => {
     <section className="bg-card rounded-lg border border-border p-6 mt-6">
       <h2 className="text-lg font-heading font-semibold text-foreground">Access Rules</h2>
       <p className="text-sm text-muted-foreground mt-1 mb-4">
-        Configure what each position can see and do.
+        Configure what each position can see and do. This is the primary access-control system — a user's access follows their POSITION (matched by email to an employee record).
       </p>
 
       {isLoading && (

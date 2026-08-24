@@ -1,11 +1,10 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, ShieldAlert, SlidersHorizontal, UserPlus, Users } from "lucide-react";
+import { Loader2, ShieldAlert, UserPlus, Users } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { DepartmentsCard, PositionsCard } from "@/components/portal/settings/LookupManagers";
 import DataImport from "@/components/portal/settings/DataImport";
-import PermissionsDialog from "@/components/portal/settings/PermissionsDialog";
 import AccessRulesCard from "@/components/portal/settings/AccessRulesCard";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useCanManageAccessRules } from "@/hooks/useAccessRules";
@@ -48,10 +47,15 @@ interface SettingsViewProps {
 interface ProfileRow {
   user_id: string;
   full_name: string;
+  email: string;
   security_level: number;
   custom_permissions: Partial<Permissions> | null;
 }
 
+interface EmployeeLink {
+  name: string;
+  position: string;
+}
 
 const LEVEL_LABELS: Record<number, string> = {
   1: "Level 1 (Full access)",
@@ -85,11 +89,10 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
   const { data: canManageRules = false } = useCanManageAccessRules();
   const [pending, setPending] = useState<PendingChange | null>(null);
   const [applying, setApplying] = useState(false);
-  const [permTarget, setPermTarget] = useState<ProfileRow | null>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteName, setInviteName] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteLevel, setInviteLevel] = useState("5");
+  const [inviteLevel, setInviteLevel] = useState("6");
   const [inviting, setInviting] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkRunning, setBulkRunning] = useState(false);
@@ -103,9 +106,6 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
       toast.error("Could not load employees", { description: error.message });
       return;
     }
-    const existing = new Set(
-      users.map((u) => (u.full_name ?? "").toLowerCase()),
-    );
     const seen = new Set<string>();
     const candidates: { email: string; name: string }[] = [];
     for (const row of (data ?? []) as { name: string; email: string }[]) {
@@ -114,7 +114,6 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
       seen.add(email);
       candidates.push({ email, name: row.name });
     }
-    void existing;
     setBulkCandidates(candidates);
     setBulkOpen(true);
   };
@@ -179,7 +178,7 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
     setInviteOpen(false);
     setInviteName("");
     setInviteEmail("");
-    setInviteLevel("5");
+    setInviteLevel("6");
     qc.invalidateQueries({ queryKey: ["portal-users"] });
   };
 
@@ -189,12 +188,26 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
     queryFn: async (): Promise<ProfileRow[]> => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("user_id, full_name, security_level, custom_permissions")
+        .select("user_id, full_name, email, security_level, custom_permissions")
         .order("security_level", { ascending: true });
       if (error) throw error;
       return (data ?? []) as unknown as ProfileRow[];
     },
+  });
 
+  const { data: employeesByEmail = {} as Record<string, EmployeeLink> } = useQuery({
+    queryKey: ["settings-employees-link"],
+    enabled: isAdmin,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("employees").select("name, position, email");
+      if (error) throw error;
+      const map: Record<string, EmployeeLink> = {};
+      for (const row of (data ?? []) as { name: string; position: string; email: string }[]) {
+        const key = (row.email ?? "").trim().toLowerCase();
+        if (key && !map[key]) map[key] = { name: row.name, position: row.position };
+      }
+      return map;
+    },
   });
 
   const applyChange = async () => {
@@ -223,14 +236,17 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="text-lg font-heading font-semibold text-foreground">User & Access Management</h2>
-            <p className="text-sm text-muted-foreground mt-1 mb-4">
-              Control which portal users can see which employees.
+            <p className="text-sm text-muted-foreground mt-1 mb-2">
+              For users linked to an employee record, access is automatically determined by their POSITION (see Access Rules). This dropdown is only used as a fallback for admin accounts that have no linked employee record — for example, Nikist-owned or partner accounts. Leave as Level 6 (default) for regular employees.
+            </p>
+            <p className="text-xs text-muted-foreground mb-4">
+              Access is now controlled per-position in the Access Rules card below. Per-user overrides have been retired.
             </p>
           </div>
           {isAdmin && (
             <div className="flex flex-wrap gap-2 justify-end">
               <Button size="sm" variant="outline" onClick={openBulkInvite}>
-                <Users className="h-4 w-4 mr-1.5" /> Invite all employees as Self-Service (L6)
+                <Users className="h-4 w-4 mr-1.5" /> Invite all employees (email-matched)
               </Button>
               <Button size="sm" onClick={() => setInviteOpen(true)}>
                 <UserPlus className="h-4 w-4 mr-1.5" /> Invite User
@@ -266,14 +282,14 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
                   <thead className="bg-muted/40">
                     <tr>
                       <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Name</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[320px]">Security Level</th>
-                      <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[160px]">Permissions</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Linked Employee</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[280px]">Admin Fallback</th>
                     </tr>
-
                   </thead>
                   <tbody>
                     {users.map((u) => {
                       const isSelf = u.user_id === currentUserId;
+                      const link = employeesByEmail[(u.email ?? "").trim().toLowerCase()];
                       return (
                         <tr key={u.user_id} className="border-t border-border">
                           <td className="px-4 py-2 text-foreground">
@@ -281,6 +297,9 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
                             {isSelf && (
                               <span className="ml-2 text-xs text-muted-foreground">(You)</span>
                             )}
+                          </td>
+                          <td className="px-4 py-2 text-xs text-muted-foreground">
+                            {link ? `${link.name} — ${link.position}` : <span className="italic">(no employee record)</span>}
                           </td>
                           <td className="px-4 py-2">
                             <Select
@@ -297,7 +316,7 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
                                 });
                               }}
                             >
-                              <SelectTrigger className="h-9 w-full">
+                              <SelectTrigger className="h-8 w-full text-xs text-muted-foreground">
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
@@ -309,14 +328,6 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
                               </SelectContent>
                             </Select>
                           </td>
-                          <td className="px-4 py-2 text-right">
-                            <button
-                              onClick={() => setPermTarget(u)}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                            >
-                              <SlidersHorizontal className="h-3.5 w-3.5" /> Permissions
-                            </button>
-                          </td>
                         </tr>
                       );
                     })}
@@ -327,7 +338,6 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
                         </td>
                       </tr>
                     )}
-
                   </tbody>
                 </table>
               </div>
@@ -350,9 +360,9 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
       <AlertDialog open={bulkOpen} onOpenChange={(o) => !bulkRunning && setBulkOpen(o)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Invite employees as self-service users?</AlertDialogTitle>
+            <AlertDialogTitle>Invite all employees (email-matched)?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will email {bulkCandidates.length} employees a signup link. Continue?
+              This will send signup emails to every employee whose email is not yet in the system. Once they sign up, their access will follow their position's access rule automatically (no admin action needed). {bulkCandidates.length} employees will be emailed. Continue?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -383,7 +393,7 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
                 <Input id="invite-email" type="email" required value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label>Initial Security Level</Label>
+                <Label>Admin Fallback Level (rarely needed)</Label>
                 <Select value={inviteLevel} onValueChange={setInviteLevel}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -392,6 +402,9 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
                     ))}
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-muted-foreground">
+                  For most invites, leave this at Level 6 — the user's access will automatically follow the access rule for their position once they log in with an email that matches an employee record. Only raise this if the invite is for an admin account that has no matching employee record.
+                </p>
               </div>
             </div>
             <DialogFooter>
@@ -414,18 +427,6 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
         </>
       )}
       {isAdmin && permissions.can_import_data && <DataImport />}
-
-      {permTarget && (
-        <PermissionsDialog
-          open={!!permTarget}
-          onOpenChange={(o) => !o && setPermTarget(null)}
-          userId={permTarget.user_id}
-          fullName={permTarget.full_name}
-          securityLevel={permTarget.security_level}
-          customPermissions={permTarget.custom_permissions}
-          currentUserId={currentUserId}
-        />
-      )}
 
 
       <AlertDialog open={!!pending} onOpenChange={(o) => !o && !applying && setPending(null)}>
