@@ -14,6 +14,8 @@ import type { CompetencyRating, CoreCompetencyRow } from "@/types/database";
 import { supabase } from "@/lib/supabase";
 import PdrUploader from "@/components/portal/pdr/PdrUploader";
 import PdrReviewDialog from "@/components/portal/pdr/PdrReviewDialog";
+import { generatePdrTemplate } from "@/lib/pdr-template";
+import { Button } from "@/components/ui/button";
 import type { ParsedPdr } from "@/lib/pdr/types";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -377,6 +379,27 @@ const Overview = ({ employee, readOnly = false }: OverviewProps) => {
     queryClient.invalidateQueries({ queryKey: ["employee", employee.id, "pdrs"] });
   };
 
+  const [downloadingTemplate, setDownloadingTemplate] = useState(false);
+  const handleDownloadTemplate = async () => {
+    setDownloadingTemplate(true);
+    try {
+      const blob = await generatePdrTemplate();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "Clearhouse-PDR-Template.docx";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast.success("Template downloaded");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Download failed");
+    } finally {
+      setDownloadingTemplate(false);
+    }
+  };
+
   if (loadingRow || !row) {
     return (
       <div className="flex items-center gap-2 text-sm text-muted-foreground py-8 justify-center">
@@ -512,6 +535,18 @@ const Overview = ({ employee, readOnly = false }: OverviewProps) => {
         isOpen={openSection === "pdrs"}
         onToggle={() => toggle("pdrs")}
       >
+        {!readOnly && (
+          <div className="flex flex-wrap items-center gap-3 mb-4">
+            <Button variant="outline" size="sm" onClick={handleDownloadTemplate} disabled={downloadingTemplate}>
+              {downloadingTemplate ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+              Download PDR template
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              Not sure of the format? Download the template, fill it in, and upload it here.
+            </p>
+          </div>
+        )}
+
         {!readOnly && <PdrUploader employeeId={employee.id} onParsed={setParsed} />}
 
         <div className="mt-4 overflow-x-auto">
