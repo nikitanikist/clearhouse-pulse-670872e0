@@ -61,6 +61,7 @@ export interface EmployeeRow {
   dev_plan_summary: string;
   growth_rationale: string;
   performance_updated_at: string | null;
+  is_active?: boolean;
   created_at: string;
   updated_at: string;
 }

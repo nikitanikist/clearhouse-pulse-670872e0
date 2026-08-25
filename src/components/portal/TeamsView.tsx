@@ -32,7 +32,7 @@ const TeamsView = ({ employees, onSelectEmployee }: TeamsViewProps) => {
   const activeDept = grouped.find((g) => g.dept === selectedDept);
 
   return (
-    <div className="p-6 space-y-6 max-w-6xl">
+    <div className="p-6 space-y-6 w-full">
       <div>
         <h1 className="text-2xl font-heading font-bold text-foreground">Teams</h1>
         <p className="text-sm text-muted-foreground mt-1">Click a department to view its members</p>

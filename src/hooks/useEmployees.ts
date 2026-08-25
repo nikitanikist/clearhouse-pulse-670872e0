@@ -36,6 +36,7 @@ export const rowToEmployee = (r: EmployeeRow): Employee => ({
   currentYearRating: r.current_year_rating === null ? null : Number(r.current_year_rating),
   previousYearRating: 0,
   bffSummary: r.bff_summary,
+  isActive: r.is_active ?? true,
 });
 
 export const useEmployees = () =>

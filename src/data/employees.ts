@@ -29,6 +29,8 @@ export interface Employee {
   /** Removed from V2 spec but kept optional for legacy components. */
   previousYearRating?: number;
   bffSummary: string;
+  /** false = deactivated employee (hidden by default). Undefined treated as active. */
+  isActive?: boolean;
 }
 
 /** Known department badge classes; unknown (admin-added) departments fall back. */
