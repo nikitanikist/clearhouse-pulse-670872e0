@@ -55,6 +55,13 @@ const excelSerialToDate = (n: number): string | null => {
   return d.toISOString().slice(0, 10);
 };
 
+const MONTHS: Record<string, number> = {
+  january: 1, jan: 1, february: 2, feb: 2, march: 3, mar: 3, april: 4, apr: 4,
+  may: 5, june: 6, jun: 6, july: 7, jul: 7, august: 8, aug: 8,
+  september: 9, sep: 9, sept: 9, october: 10, oct: 10, november: 11, nov: 11,
+  december: 12, dec: 12,
+};
+
 const parseDate = (value: string): string | null => {
   const v = value.trim();
   if (!v) return null;
@@ -62,6 +69,18 @@ const parseDate = (value: string): string | null => {
   if (/^\d{4}-\d{2}-\d{2}$/.test(v)) {
     const d = new Date(`${v}T00:00:00Z`);
     return isNaN(d.getTime()) ? null : v;
+  }
+  // Verbose text dates: "Tuesday, August 27, 2024", "May 1 2026", "Aug 27, 2024"
+  const verbose = v.match(
+    /^(?:(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)[,\s]+)?([a-z]+)\.?\s+(\d{1,2})(?:st|nd|rd|th)?[,\s]+(\d{4})$/i
+  );
+  if (verbose) {
+    const month = MONTHS[verbose[1].toLowerCase()];
+    if (!month) return null;
+    const day = Number(verbose[2]);
+    const year = Number(verbose[3]);
+    if (day < 1 || day > 31) return null;
+    return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
   }
   const m = v.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
   if (m) {
@@ -80,6 +99,12 @@ const parseDate = (value: string): string | null => {
   }
   return null;
 };
+
+/** Rows whose first non-empty cell matches one of these are location dividers. */
+const DIVIDER_RE = /^(india|canada|india team|canada team)$/i;
+
+/** Values that should be treated as blank in numeric fields. */
+const BLANKISH_RE = /^(na|n\/a|-)$/i;
 
 const csvEscape = (v: string) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
 
@@ -125,8 +150,14 @@ const DataImport = () => {
   const [importing, setImporting] = useState(false);
   const [commitErrors, setCommitErrors] = useState<string[]>([]);
 
-  const deptNames = useMemo(() => departments.map((d) => d.name), [departments]);
-  const posNames = useMemo(() => positions.map((p) => p.name), [positions]);
+  const deptNames = useMemo(
+    () => departments.filter((d) => d.is_active !== false).map((d) => d.name),
+    [departments]
+  );
+  const posNames = useMemo(
+    () => positions.filter((p) => p.is_active !== false).map((p) => p.name),
+    [positions]
+  );
 
   const validRows = rows?.filter((r) => r.errors.length === 0) ?? [];
   const errorRows = rows?.filter((r) => r.errors.length > 0) ?? [];
@@ -149,7 +180,11 @@ const DataImport = () => {
     headers.forEach((h, i) => {
       if (h) lookup.set(norm(h), i);
     });
-    return matrix.slice(1).map((cells, i) => {
+    const out: ParsedRow[] = [];
+    let currentLocation = "";
+
+    matrix.slice(1).forEach((cells, i) => {
+      const rowNo = i + 2;
       const get = (...names: string[]) => {
         for (const n of names) {
           const idx = lookup.get(norm(n));
@@ -161,11 +196,30 @@ const DataImport = () => {
         return "";
       };
 
+      const firstNonEmpty =
+        (cells ?? []).map((c) => String(c ?? "").trim()).find((c) => c !== "") ?? "";
+
+      // Location divider rows (e.g. "INDIA", "Canada team") — set location context, skip row
+      if (DIVIDER_RE.test(firstNonEmpty)) {
+        currentLocation = firstNonEmpty.toLowerCase().includes("india") ? "India" : "Canada";
+        console.log(
+          `Skipped row ${rowNo}: location divider '${firstNonEmpty}' (location now ${currentLocation})`
+        );
+        return;
+      }
+
       const errors: string[] = [];
       const name = get("Name");
       const department = get("Department");
       const position = get("Position");
-      const location = get("Location");
+
+      // Blank / subtotal rows (no name, department or position) — skip silently
+      if (!name && !department && !position) {
+        console.log(`Skipped row ${rowNo}: blank/subtotal row (no name, department or position)`);
+        return;
+      }
+
+      const location = get("Location") || currentLocation;
 
       if (!name) errors.push("Name is required");
       if (!department) errors.push("Department is required");
@@ -178,14 +232,26 @@ const DataImport = () => {
       else if (!LOCATIONS.includes(location))
         errors.push(`Location '${location}' is invalid (Canada or India)`);
 
-      const joiningRaw = get("Joining Date");
-      const roleRaw = get("Role Start Date");
-      const joining_date = joiningRaw ? parseDate(joiningRaw) : null;
-      const role_start_date = roleRaw ? parseDate(roleRaw) : null;
-      if (joiningRaw && !joining_date) errors.push(`Joining Date '${joiningRaw}' is not a valid date`);
-      if (roleRaw && !role_start_date) errors.push(`Role Start Date '${roleRaw}' is not a valid date`);
+      const parseDateField = (raw: string): string | null => {
+        if (!raw) return null;
+        if (/\s+or\s+/i.test(raw)) {
+          errors.push(`Date '${raw}' is ambiguous (contains 'or') — please specify one`);
+          return null;
+        }
+        return parseDate(raw);
+      };
 
-      const ratingRaw = get("Current Year Rating");
+      const joiningRaw = get("Joining Date", "Start Date");
+      const roleRaw = get("Role Start Date");
+      const joining_date = parseDateField(joiningRaw);
+      const role_start_date = parseDateField(roleRaw);
+      if (joiningRaw && !joining_date && !/\s+or\s+/i.test(joiningRaw))
+        errors.push(`Joining Date '${joiningRaw}' is not a valid date`);
+      if (roleRaw && !role_start_date && !/\s+or\s+/i.test(roleRaw))
+        errors.push(`Role Start Date '${roleRaw}' is not a valid date`);
+
+      const ratingRaw0 = get("Current Year Rating");
+      const ratingRaw = BLANKISH_RE.test(ratingRaw0) ? "" : ratingRaw0;
       let current_year_rating: number | null = null;
       if (ratingRaw) {
         const n = Number(ratingRaw);
@@ -202,8 +268,8 @@ const DataImport = () => {
       if (potentialRaw && !potential)
         errors.push(`Potential Rating '${potentialRaw}' is invalid`);
 
-      return {
-        index: i + 2,
+      out.push({
+        index: rowNo,
         errors,
         raw: { name, department, position, location },
         employee: {
@@ -220,8 +286,10 @@ const DataImport = () => {
           current_year_rating_code: codeRaw ? codeRaw.toUpperCase() : "M",
           potential_rating: potential ?? "Well Placed",
         },
-      };
+      });
     });
+
+    return out;
   };
 
   const handleFile = async (file: File) => {

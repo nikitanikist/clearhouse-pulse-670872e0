@@ -78,16 +78,19 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          is_active: boolean
           name: string
         }
         Insert: {
           created_at?: string
           id?: string
+          is_active?: boolean
           name: string
         }
         Update: {
           created_at?: string
           id?: string
+          is_active?: boolean
           name?: string
         }
         Relationships: []
@@ -209,6 +212,7 @@ export type Database = {
           email: string
           growth_rationale: string
           id: string
+          is_active: boolean
           joining_date: string | null
           location: Database["public"]["Enums"]["employee_location"]
           name: string
@@ -236,6 +240,7 @@ export type Database = {
           email: string
           growth_rationale?: string
           id?: string
+          is_active?: boolean
           joining_date?: string | null
           location: Database["public"]["Enums"]["employee_location"]
           name: string
@@ -263,6 +268,7 @@ export type Database = {
           email?: string
           growth_rationale?: string
           id?: string
+          is_active?: boolean
           joining_date?: string | null
           location?: Database["public"]["Enums"]["employee_location"]
           name?: string
@@ -358,18 +364,21 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          is_active: boolean
           name: string
           visibility_tier: number
         }
         Insert: {
           created_at?: string
           id?: string
+          is_active?: boolean
           name: string
           visibility_tier: number
         }
         Update: {
           created_at?: string
           id?: string
+          is_active?: boolean
           name?: string
           visibility_tier?: number
         }
@@ -379,6 +388,7 @@ export type Database = {
         Row: {
           created_at: string
           custom_permissions: Json | null
+          email: string | null
           full_name: string
           security_level: number
           user_id: string
@@ -386,6 +396,7 @@ export type Database = {
         Insert: {
           created_at?: string
           custom_permissions?: Json | null
+          email?: string | null
           full_name?: string
           security_level: number
           user_id: string
@@ -393,6 +404,7 @@ export type Database = {
         Update: {
           created_at?: string
           custom_permissions?: Json | null
+          email?: string | null
           full_name?: string
           security_level?: number
           user_id?: string
