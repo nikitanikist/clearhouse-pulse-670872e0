@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
@@ -7,6 +7,7 @@ import { useDepartments, usePositions, type DepartmentRow, type PositionRow } fr
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -45,6 +46,12 @@ const countEmployeesUsing = async (column: "department" | "position", value: str
   return count ?? 0;
 };
 
+const inactiveBadge = (
+  <span className="ml-2 inline-block align-middle text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border">
+    Inactive
+  </span>
+);
+
 /* ------------------------------- Departments ------------------------------ */
 
 const DepartmentsCard = () => {
@@ -54,8 +61,9 @@ const DepartmentsCard = () => {
   const [editing, setEditing] = useState<DepartmentRow | null>(null);
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
-  const [toDelete, setToDelete] = useState<DepartmentRow | null>(null);
+  const [toDelete, setToDelete] = useState<{ row: DepartmentRow; inUse: number } | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [preparingDeleteId, setPreparingDeleteId] = useState<string | null>(null);
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["departments"] });
@@ -79,20 +87,47 @@ const DepartmentsCard = () => {
     refresh();
   };
 
+  const toggleActive = async (d: DepartmentRow) => {
+    const next = d.is_active === false;
+    const { error } = await supabase
+      .from("departments" as never)
+      .update({ is_active: next } as never)
+      .eq("id", d.id);
+    if (error) { toast.error("Could not update department", { description: error.message }); return; }
+    toast.success(next ? `${d.name} reactivated` : `${d.name} marked inactive`);
+    refresh();
+  };
+
+  const requestDelete = async (d: DepartmentRow) => {
+    setPreparingDeleteId(d.id);
+    try {
+      const inUse = await countEmployeesUsing("department", d.name);
+      setToDelete({ row: d, inUse });
+    } catch (e) {
+      toast.error("Could not check department usage", { description: (e as Error).message });
+    } finally {
+      setPreparingDeleteId(null);
+    }
+  };
+
   const confirmDelete = async () => {
     if (!toDelete) return;
     setDeleting(true);
     try {
-      const inUse = await countEmployeesUsing("department", toDelete.name);
-      if (inUse > 0) {
-        toast.error(`Cannot delete: ${inUse} employees still use this department.`);
-        setDeleting(false);
-        setToDelete(null);
-        return;
+      if (toDelete.inUse > 0) {
+        const { error: empErr } = await supabase
+          .from("employees")
+          .delete()
+          .eq("department", toDelete.row.name as never);
+        if (empErr) throw empErr;
       }
-      const { error } = await supabase.from("departments" as never).delete().eq("id", toDelete.id);
+      const { error } = await supabase.from("departments" as never).delete().eq("id", toDelete.row.id);
       if (error) throw error;
-      toast.success("Department deleted");
+      toast.success(
+        toDelete.inUse > 0
+          ? `Department and ${toDelete.inUse} employee${toDelete.inUse === 1 ? "" : "s"} permanently deleted`
+          : "Department deleted"
+      );
       setToDelete(null);
       refresh();
     } catch (e) {
@@ -108,7 +143,7 @@ const DepartmentsCard = () => {
         <div>
           <h2 className="text-lg font-heading font-semibold text-foreground">Manage Departments</h2>
           <p className="text-sm text-muted-foreground mt-1 mb-4">
-            Departments available across employee records and filters.
+            Departments available across employee records and filters. Inactive departments are hidden from dropdowns.
           </p>
         </div>
         <Button size="sm" onClick={openAdd}>
@@ -126,25 +161,43 @@ const DepartmentsCard = () => {
             <thead className="bg-muted/40">
               <tr>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Name</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[90px]">Active</th>
                 <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[120px]">Actions</th>
               </tr>
             </thead>
             <tbody>
               {departments.map((d) => (
-                <tr key={d.id} className="border-t border-border">
-                  <td className="px-4 py-2 text-foreground">{d.name}</td>
+                <tr key={d.id} className={`border-t border-border ${d.is_active === false ? "opacity-60" : ""}`}>
+                  <td className="px-4 py-2 text-foreground">
+                    {d.name}
+                    {d.is_active === false && inactiveBadge}
+                  </td>
+                  <td className="px-4 py-2">
+                    <Switch
+                      checked={d.is_active !== false}
+                      onCheckedChange={() => toggleActive(d)}
+                      aria-label={`Toggle ${d.name} active`}
+                    />
+                  </td>
                   <td className="px-4 py-2 text-right">
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(d)} aria-label={`Edit ${d.name}`}>
                       <Pencil className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setToDelete(d)} aria-label={`Delete ${d.name}`}>
-                      <Trash2 className="h-4 w-4" />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive"
+                      onClick={() => requestDelete(d)}
+                      disabled={preparingDeleteId === d.id}
+                      aria-label={`Delete ${d.name}`}
+                    >
+                      {preparingDeleteId === d.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                     </Button>
                   </td>
                 </tr>
               ))}
               {departments.length === 0 && (
-                <tr><td colSpan={2} className="px-4 py-6 text-center text-muted-foreground">No departments yet.</td></tr>
+                <tr><td colSpan={3} className="px-4 py-6 text-center text-muted-foreground">No departments yet.</td></tr>
               )}
             </tbody>
           </table>
@@ -172,14 +225,22 @@ const DepartmentsCard = () => {
       <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && !deleting && setToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete department?</AlertDialogTitle>
+            <AlertDialogTitle>Delete {toDelete?.row.name} permanently?</AlertDialogTitle>
             <AlertDialogDescription>
-              {toDelete ? `"${toDelete.name}" will be removed from the list. Departments still in use by employees cannot be deleted.` : ""}
+              {toDelete
+                ? toDelete.inUse === 0
+                  ? `"${toDelete.row.name}" will be removed. This cannot be undone.`
+                  : `${toDelete.inUse} employees are currently in ${toDelete.row.name}. Deleting this will PERMANENTLY DELETE those ${toDelete.inUse} employees AND all their data (notes, PDRs, ratings, interpersonal, growth). This cannot be undone.`
+                : ""}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} disabled={deleting}>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); confirmDelete(); }}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
               {deleting ? "Deleting…" : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -199,8 +260,9 @@ const PositionsCard = () => {
   const [name, setName] = useState("");
   const [tier, setTier] = useState("4");
   const [saving, setSaving] = useState(false);
-  const [toDelete, setToDelete] = useState<PositionRow | null>(null);
+  const [toDelete, setToDelete] = useState<{ row: PositionRow; inUse: number } | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [preparingDeleteId, setPreparingDeleteId] = useState<string | null>(null);
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["positions"] });
@@ -225,20 +287,47 @@ const PositionsCard = () => {
     refresh();
   };
 
+  const toggleActive = async (p: PositionRow) => {
+    const next = p.is_active === false;
+    const { error } = await supabase
+      .from("positions" as never)
+      .update({ is_active: next } as never)
+      .eq("id", p.id);
+    if (error) { toast.error("Could not update position", { description: error.message }); return; }
+    toast.success(next ? `${p.name} reactivated` : `${p.name} marked inactive`);
+    refresh();
+  };
+
+  const requestDelete = async (p: PositionRow) => {
+    setPreparingDeleteId(p.id);
+    try {
+      const inUse = await countEmployeesUsing("position", p.name);
+      setToDelete({ row: p, inUse });
+    } catch (e) {
+      toast.error("Could not check position usage", { description: (e as Error).message });
+    } finally {
+      setPreparingDeleteId(null);
+    }
+  };
+
   const confirmDelete = async () => {
     if (!toDelete) return;
     setDeleting(true);
     try {
-      const inUse = await countEmployeesUsing("position", toDelete.name);
-      if (inUse > 0) {
-        toast.error(`Cannot delete: ${inUse} employees still use this position.`);
-        setDeleting(false);
-        setToDelete(null);
-        return;
+      if (toDelete.inUse > 0) {
+        const { error: empErr } = await supabase
+          .from("employees")
+          .delete()
+          .eq("position", toDelete.row.name as never);
+        if (empErr) throw empErr;
       }
-      const { error } = await supabase.from("positions" as never).delete().eq("id", toDelete.id);
+      const { error } = await supabase.from("positions" as never).delete().eq("id", toDelete.row.id);
       if (error) throw error;
-      toast.success("Position deleted");
+      toast.success(
+        toDelete.inUse > 0
+          ? `Position and ${toDelete.inUse} employee${toDelete.inUse === 1 ? "" : "s"} permanently deleted`
+          : "Position deleted"
+      );
       setToDelete(null);
       refresh();
     } catch (e) {
@@ -254,7 +343,7 @@ const PositionsCard = () => {
         <div>
           <h2 className="text-lg font-heading font-semibold text-foreground">Manage Positions</h2>
           <p className="text-sm text-muted-foreground mt-1 mb-4">
-            Position titles and the visibility tier that controls who can see them.
+            Position titles and the visibility tier that controls who can see them. Inactive positions are hidden from dropdowns.
           </p>
         </div>
         <Button size="sm" onClick={openAdd}>
@@ -273,30 +362,48 @@ const PositionsCard = () => {
               <tr>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Name</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[140px]">Visibility</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[90px]">Active</th>
                 <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[120px]">Actions</th>
               </tr>
             </thead>
             <tbody>
               {positions.map((p) => (
-                <tr key={p.id} className="border-t border-border">
-                  <td className="px-4 py-2 text-foreground">{p.name}</td>
+                <tr key={p.id} className={`border-t border-border ${p.is_active === false ? "opacity-60" : ""}`}>
+                  <td className="px-4 py-2 text-foreground">
+                    {p.name}
+                    {p.is_active === false && inactiveBadge}
+                  </td>
                   <td className="px-4 py-2">
                     <span className="inline-block text-xs font-medium px-2.5 py-1 rounded-full bg-primary/15 text-primary">
                       Tier {p.visibility_tier}
                     </span>
                   </td>
+                  <td className="px-4 py-2">
+                    <Switch
+                      checked={p.is_active !== false}
+                      onCheckedChange={() => toggleActive(p)}
+                      aria-label={`Toggle ${p.name} active`}
+                    />
+                  </td>
                   <td className="px-4 py-2 text-right">
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(p)} aria-label={`Edit ${p.name}`}>
                       <Pencil className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setToDelete(p)} aria-label={`Delete ${p.name}`}>
-                      <Trash2 className="h-4 w-4" />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive"
+                      onClick={() => requestDelete(p)}
+                      disabled={preparingDeleteId === p.id}
+                      aria-label={`Delete ${p.name}`}
+                    >
+                      {preparingDeleteId === p.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                     </Button>
                   </td>
                 </tr>
               ))}
               {positions.length === 0 && (
-                <tr><td colSpan={3} className="px-4 py-6 text-center text-muted-foreground">No positions yet.</td></tr>
+                <tr><td colSpan={4} className="px-4 py-6 text-center text-muted-foreground">No positions yet.</td></tr>
               )}
             </tbody>
           </table>
@@ -339,14 +446,22 @@ const PositionsCard = () => {
       <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && !deleting && setToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete position?</AlertDialogTitle>
+            <AlertDialogTitle>Delete {toDelete?.row.name} permanently?</AlertDialogTitle>
             <AlertDialogDescription>
-              {toDelete ? `"${toDelete.name}" will be removed from the list. Positions still in use by employees cannot be deleted.` : ""}
+              {toDelete
+                ? toDelete.inUse === 0
+                  ? `"${toDelete.row.name}" will be removed. This cannot be undone.`
+                  : `${toDelete.inUse} employees currently hold the position ${toDelete.row.name}. Deleting this will PERMANENTLY DELETE those ${toDelete.inUse} employees AND all their data (notes, PDRs, ratings, interpersonal, growth). This cannot be undone.`
+                : ""}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} disabled={deleting}>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); confirmDelete(); }}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
               {deleting ? "Deleting…" : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>

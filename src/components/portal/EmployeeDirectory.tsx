@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { Search, Filter, Plus, Loader2, X } from "lucide-react";
+import { Search, Filter, Plus, Loader2, X, MoreHorizontal, ChevronLeft, ChevronRight } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -10,8 +10,26 @@ import type { CompetencyRating } from "@/types/database";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { RATING_LABELS, RATING_TO_NUMBER } from "@/lib/ratings";
 import SupervisorCombobox from "./SupervisorCombobox";
 
@@ -76,6 +94,12 @@ const EmployeeDirectory = ({ employees, onSelectEmployee, initialFilters }: Empl
   const [potMulti, setPotMulti] = useState<string[] | null>(null);
   const [ratingFilter, setRatingFilter] = useState<string>("");
   const [supervisorFilter, setSupervisorFilter] = useState<string>("");
+  const [showInactive, setShowInactive] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number | "all">(20);
+  const [toToggle, setToToggle] = useState<Employee | null>(null);
+  const [toDelete, setToDelete] = useState<Employee | null>(null);
+  const [rowActionBusy, setRowActionBusy] = useState(false);
 
   useEffect(() => {
     if (!initialFilters) return;
@@ -91,6 +115,10 @@ const EmployeeDirectory = ({ employees, onSelectEmployee, initialFilters }: Empl
     if (initialFilters.department || pot) setFiltersOpen(true);
   }, [initialFilters]);
 
+  // Reset to page 1 whenever any filter/search changes
+  useEffect(() => {
+    setPage(1);
+  }, [search, deptFilter, locFilter, posFilter, potFilter, potMulti, ratingFilter, supervisorFilter, showInactive, pageSize]);
 
   const supervisors = useMemo(
     () => Array.from(new Set(employees.map((e) => e.supervisor))).sort(),
@@ -99,6 +127,7 @@ const EmployeeDirectory = ({ employees, onSelectEmployee, initialFilters }: Empl
 
   const filtered = useMemo(() => {
     return employees.filter((e) => {
+      const matchesActive = showInactive || e.isActive !== false;
       const q = search.toLowerCase();
       const matchesSearch = e.name.toLowerCase().includes(q) ||
         e.position.toLowerCase().includes(q) ||
@@ -113,9 +142,9 @@ const EmployeeDirectory = ({ employees, onSelectEmployee, initialFilters }: Empl
         : !potFilter || e.potential === potFilter;
       const matchesRating = !ratingFilter || deriveRating(e.currentYearRating) === ratingFilter;
       const matchesSupervisor = !supervisorFilter || e.supervisor === supervisorFilter;
-      return matchesSearch && matchesDept && matchesLoc && matchesPos && matchesPot && matchesRating && matchesSupervisor;
+      return matchesActive && matchesSearch && matchesDept && matchesLoc && matchesPos && matchesPot && matchesRating && matchesSupervisor;
     });
-  }, [employees, search, deptFilter, locFilter, posFilter, potFilter, potMulti, ratingFilter, supervisorFilter]);
+  }, [employees, search, deptFilter, locFilter, posFilter, potFilter, potMulti, ratingFilter, supervisorFilter, showInactive]);
 
   const clearFilters = () => {
     setDeptFilter("");
@@ -134,6 +163,14 @@ const EmployeeDirectory = ({ employees, onSelectEmployee, initialFilters }: Empl
   const activeFilters = [deptFilter, locFilter, posFilter, potFilter, ratingFilter, supervisorFilter].filter(Boolean);
   const hasActiveFilters = activeFilters.length > 0;
   const hasAnyConstraint = hasActiveFilters || search.length > 0;
+
+  // Pagination
+  const total = filtered.length;
+  const pageCount = pageSize === "all" ? 1 : Math.max(1, Math.ceil(total / pageSize));
+  const safePage = Math.min(page, pageCount);
+  const startIdx = pageSize === "all" ? 0 : (safePage - 1) * pageSize;
+  const endIdx = pageSize === "all" ? total : Math.min(total, startIdx + pageSize);
+  const pageRows = pageSize === "all" ? filtered : filtered.slice(startIdx, endIdx);
 
   const queryClient = useQueryClient();
   const permissions = usePermissions();
@@ -197,6 +234,38 @@ const EmployeeDirectory = ({ employees, onSelectEmployee, initialFilters }: Empl
     queryClient.invalidateQueries({ queryKey: ["employees"] });
   };
 
+  const toggleActive = async () => {
+    if (!toToggle) return;
+    setRowActionBusy(true);
+    const next = toToggle.isActive === false;
+    const { error } = await supabase
+      .from("employees")
+      .update({ is_active: next } as never)
+      .eq("id", toToggle.id);
+    setRowActionBusy(false);
+    if (error) {
+      toast.error("Could not update employee", { description: error.message });
+      return;
+    }
+    toast.success(next ? `${toToggle.name} reactivated` : `${toToggle.name} marked as inactive`);
+    setToToggle(null);
+    queryClient.invalidateQueries({ queryKey: ["employees"] });
+  };
+
+  const deleteEmployee = async () => {
+    if (!toDelete) return;
+    setRowActionBusy(true);
+    const { error } = await supabase.from("employees").delete().eq("id", toDelete.id);
+    setRowActionBusy(false);
+    if (error) {
+      toast.error("Could not delete employee", { description: error.message });
+      return;
+    }
+    toast.success(`${toDelete.name} permanently deleted`);
+    setToDelete(null);
+    queryClient.invalidateQueries({ queryKey: ["employees"] });
+  };
+
   return (
     <TooltipProvider>
       <div className="flex-1 p-6 overflow-y-auto">
@@ -257,6 +326,14 @@ const EmployeeDirectory = ({ employees, onSelectEmployee, initialFilters }: Empl
               </span>
             )}
           </button>
+          <label htmlFor="show-inactive" className="flex items-center gap-2 text-sm text-muted-foreground select-none cursor-pointer">
+            <Checkbox
+              id="show-inactive"
+              checked={showInactive}
+              onCheckedChange={(v) => setShowInactive(v === true)}
+            />
+            Show inactive
+          </label>
         </div>
 
         {/* Filter Dropdowns */}
@@ -329,14 +406,15 @@ const EmployeeDirectory = ({ employees, onSelectEmployee, initialFilters }: Empl
                 <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Location</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Rating</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Potential</th>
+                {permissions.can_add_employee && <th className="w-[50px]" />}
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {filtered.map((emp) => (
+              {pageRows.map((emp) => (
                 <tr
                   key={emp.id}
                   onClick={() => onSelectEmployee(emp)}
-                  className="hover:bg-muted/40 cursor-pointer transition-colors"
+                  className={`hover:bg-muted/40 cursor-pointer transition-colors ${emp.isActive === false ? "opacity-60" : ""}`}
                 >
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
@@ -344,7 +422,14 @@ const EmployeeDirectory = ({ employees, onSelectEmployee, initialFilters }: Empl
                         {emp.initials}
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-foreground">{emp.name}</p>
+                        <p className="text-sm font-medium text-foreground">
+                          {emp.name}
+                          {emp.isActive === false && (
+                            <span className="ml-2 inline-block align-middle text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border">
+                              Inactive
+                            </span>
+                          )}
+                        </p>
                         <p className="text-xs text-muted-foreground">{emp.email}</p>
                       </div>
                     </div>
@@ -365,6 +450,32 @@ const EmployeeDirectory = ({ employees, onSelectEmployee, initialFilters }: Empl
                       <span className="text-sm text-foreground">{emp.potential}</span>
                     </div>
                   </td>
+                  {permissions.can_add_employee && (
+                    <td className="px-2 py-3" onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            aria-label={`Actions for ${emp.name}`}
+                            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => setToToggle(emp)}>
+                            {emp.isActive === false ? "Reactivate" : "Mark as Inactive"}
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onClick={() => setToDelete(emp)}
+                          >
+                            Delete permanently…
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -386,6 +497,45 @@ const EmployeeDirectory = ({ employees, onSelectEmployee, initialFilters }: Empl
             </div>
           )}
         </div>
+
+        {/* Pagination */}
+        {total > 0 && (
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-muted-foreground">
+              Showing {startIdx + 1}–{endIdx} of {total} employees
+            </p>
+            <div className="flex items-center gap-3">
+              <select
+                aria-label="Rows per page"
+                value={String(pageSize)}
+                onChange={(e) => setPageSize(e.target.value === "all" ? "all" : Number(e.target.value))}
+                className="py-1.5 px-2 rounded-md bg-background text-foreground text-sm border border-border focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="10">10 / page</option>
+                <option value="20">20 / page</option>
+                <option value="50">50 / page</option>
+                <option value="all">All</option>
+              </select>
+              <button
+                onClick={() => setPage(safePage - 1)}
+                disabled={safePage <= 1}
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-md border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ChevronLeft className="h-4 w-4" /> Prev
+              </button>
+              <span className="text-sm text-muted-foreground">
+                Page {safePage} of {pageCount}
+              </span>
+              <button
+                onClick={() => setPage(safePage + 1)}
+                disabled={safePage >= pageCount}
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-md border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Add Employee Dialog */}
         <Dialog open={addOpen} onOpenChange={(o) => { if (!saving) { setAddOpen(o); if (!o) resetForm(); } }}>
@@ -476,6 +626,50 @@ const EmployeeDirectory = ({ employees, onSelectEmployee, initialFilters }: Empl
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Mark Inactive / Reactivate confirm */}
+        <AlertDialog open={!!toToggle} onOpenChange={(o) => !o && !rowActionBusy && setToToggle(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {toToggle?.isActive === false ? "Reactivate employee?" : "Mark employee as inactive?"}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {toToggle?.isActive === false
+                  ? `${toToggle?.name} will appear in the directory and reports again.`
+                  : `${toToggle?.name} will be hidden from the directory by default. Their record and all data are kept — you can reactivate them anytime.`}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={rowActionBusy}>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={(e) => { e.preventDefault(); toggleActive(); }} disabled={rowActionBusy}>
+                {rowActionBusy ? "Saving…" : toToggle?.isActive === false ? "Reactivate" : "Mark as Inactive"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Hard delete confirm */}
+        <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && !rowActionBusy && setToDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete employee permanently?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently remove {toDelete?.name} and ALL their data — reviews, notes, PDRs, interpersonal, growth. This cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={rowActionBusy}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(e) => { e.preventDefault(); deleteEmployee(); }}
+                disabled={rowActionBusy}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {rowActionBusy ? "Deleting…" : "Delete"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </TooltipProvider>
   );
