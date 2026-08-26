@@ -1,5 +1,10 @@
 // parse-pdr: unzip a .docx PDR, parse word/document.xml, return structured ParsedPdr JSON.
 // No DB writes — caller (frontend) reviews then applies.
+//
+// Two parsers:
+//  1. parseBryonDocument  — Clearhouse's real PDR format (11 tables, see below).
+//  2. parseLegacyDocument — the earlier simplified template (kept for backward compat).
+// parseDocument() sniffs the file and dispatches.
 
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { BlobReader, ZipReader, TextWriter } from "https://deno.land/x/zipjs@v2.7.45/index.js";
@@ -19,12 +24,14 @@ interface ParsedDevPlanRow {
   target_date: string | null;
 }
 interface ParsedPdr {
+  employee?: { name: string; position: string };
   bff_summary: string;
   performance_what_went_well: string;
   performance_what_could_go_better: string;
   performance_summary: string;
   career_aspirations_summary: string;
   current_year_rating_code: RatingCode | null;
+  current_year_rating?: number | null;
   competencies: ParsedCompetency[];
   dev_plan: ParsedDevPlanRow[];
   warnings: string[];
@@ -32,12 +39,16 @@ interface ParsedPdr {
 
 const COMPETENCY_NAMES: CompetencyName[] = ["Thought", "Results", "Expertise", "People", "Self"];
 const RATING_BY_COL: Record<number, RatingCode> = { 2: "E", 3: "G", 4: "M", 5: "NI" };
+const NUMERIC_BY_CODE: Record<RatingCode, number> = { E: 4.5, G: 3.5, M: 2.5, NI: 1.0 };
+
+/* ------------------------------------------------------------------ */
+/* XML helpers                                                         */
+/* ------------------------------------------------------------------ */
 
 const decodeEntities = (s: string) =>
   s.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, "&");
 
 function paragraphText(pXml: string): string {
-  // <w:t>...</w:t> runs concatenated, <w:br/> as newlines
   let out = "";
   const tokens = pXml.matchAll(/<w:t\b[^>]*>([\s\S]*?)<\/w:t>|<w:br\b[^\/]*\/>|<w:tab\b[^\/]*\/>/g);
   for (const m of tokens) {
@@ -54,7 +65,6 @@ function cellText(tcXml: string): string {
 }
 
 function rowCells(trXml: string): string[] {
-  // top-level <w:tc> within this <w:tr>. Naive split is OK because cells aren't nested in rows.
   return [...trXml.matchAll(/<w:tc\b[\s\S]*?<\/w:tc>/g)].map((m) => cellText(m[0]));
 }
 
@@ -63,50 +73,324 @@ function tableRows(tblXml: string): string[][] {
   return trs.map(rowCells);
 }
 
-// Detect "X-in-cell": cell contains a non-empty mark (any non-whitespace).
-// Also detect symbol/checkbox fallbacks.
+type Block = { kind: "table"; rows: string[][] } | { kind: "para"; text: string };
+
+// Document-order blocks. A <w:tbl> starts before its inner paragraphs, so the
+// alternation consumes the whole table and inner <w:p> are not emitted twice.
+function documentBlocks(xml: string): Block[] {
+  const out: Block[] = [];
+  for (const m of xml.matchAll(/<w:tbl\b[\s\S]*?<\/w:tbl>|<w:p\b[\s\S]*?<\/w:p>/g)) {
+    if (m[0].startsWith("<w:tbl")) out.push({ kind: "table", rows: tableRows(m[0]) });
+    else {
+      const t = paragraphText(m[0]).trim();
+      if (t) out.push({ kind: "para", text: t });
+    }
+  }
+  return out;
+}
+
 function isMarked(text: string): boolean {
-  if (!text) return false;
-  const t = text.trim();
+  const t = (text ?? "").trim();
   if (!t) return false;
-  // Common explicit marks
   if (/[xX✓✔☑☒]/.test(t)) return true;
-  // Any other non-whitespace counts (typed mark like a dot, '*', etc.)
   return t.length > 0;
 }
 
-function detectCompetencyTable(rows: string[][]): CompetencyName | null {
-  if (rows.length < 3 || rows[0].length < 6) return null;
-  const name = rows[0][0]?.trim();
-  if (!name) return null;
-  const match = COMPETENCY_NAMES.find((n) => name.toLowerCase().includes(n.toLowerCase()));
-  return match ?? null;
+function normalizeDate(s: string): string | null {
+  if (!s) return null;
+  const iso = s.match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+  return null;
 }
 
-function parseCompetency(rows: string[][], name: CompetencyName): ParsedCompetency {
-  // Row 2 = Reviewer row; cols 2..5 are rating cells
-  const reviewerRow = rows[2] ?? [];
-  let rating_code: RatingCode | null = null;
-  for (let c = 2; c <= 5; c++) {
-    if (isMarked(reviewerRow[c] ?? "")) {
-      rating_code = RATING_BY_COL[c];
-      break;
+/* ------------------------------------------------------------------ */
+/* Bryon (real Clearhouse) format parser                               */
+/* ------------------------------------------------------------------ */
+
+// Guidance / prompt prose that must never be captured as an answer.
+const BRYON_GUIDANCE: RegExp[] = [
+  /^consider different elements/i,
+  /^how you have worked/i,
+  /^do you feel/i,
+  /^what has given you/i,
+  /^this section is completed by/i,
+  /^\(using bullet points/i,
+  /^using bullet points/i,
+  /^in this section,? describe/i,
+  /^in preparation for/i,
+  /^for example/i,
+  /^instructions?\s*:/i,
+  /^taking all the above/i,
+  /^a needs improvement/i,
+  /^what career growth/i,
+  /^what specific skills/i,
+  /^what knowledge or experience/i,
+  /^are you looking/i,
+  /^what is your career vision/i,
+  /^what would you like to achieve/i,
+  /^this section is an opportunity/i,
+  /^please (use|provide|reflect|consider|describe|note)/i,
+];
+
+const BRYON_HEADINGS: RegExp[] = [
+  /^employee profile\b/i,
+  /^(my\s+)?bigger,?\s*brighter\s*future/i,
+  /^section\s+(one|two|three|1|2|3)\b/i,
+  /^what\s+has\s+gone\s+well/i,
+  /^what\s+could\s+have\s+gone\s+better/i,
+  /^career\s+aspirations?/i,
+  /^professional\s+development/i,
+  /^core\s+competenc(y|ies)/i,
+  /^overall\s+(performance\s+)?rating/i,
+  /^reviewee\s+commentary/i,
+  /^reviewer\s+commentary/i,
+  /^looking\s+(back|forward)\b/i,
+];
+
+const isBryonGuidance = (t: string) => BRYON_GUIDANCE.some((r) => r.test(t.trim()));
+const isBryonHeading = (t: string) => {
+  const s = t.trim();
+  if (!s || s.length > 140) return false;
+  return BRYON_HEADINGS.some((r) => r.test(s));
+};
+
+// Collect the answer paragraphs that follow a heading, skipping guidance/prompt
+// bullets and stopping at the next heading. Returns "" when nothing usable.
+function collectAnswer(paras: string[], headingRe: RegExp): string {
+  for (let i = 0; i < paras.length; i++) {
+    const t = paras[i].trim();
+    if (!headingRe.test(t)) continue;
+    const collected: string[] = [];
+    const inline = t.replace(headingRe, "").replace(/^[:\-\s?]+/, "").trim();
+    if (inline && !isBryonGuidance(inline) && !isBryonHeading(inline)) collected.push(inline);
+    for (let j = i + 1; j < paras.length; j++) {
+      const q = paras[j].trim();
+      if (!q) continue;
+      if (isBryonHeading(q)) break;
+      if (isBryonGuidance(q)) continue;
+      if (/^[?•\-–]+$/.test(q)) continue;
+      if (q.endsWith("?") && q.length < 160) continue; // prompt question
+      collected.push(q);
+      if (collected.join(" ").length > 4000) break;
+    }
+    const result = collected.join("\n").trim();
+    if (result) return result;
+  }
+  return "";
+}
+
+function looksLikeEmployeeTable(rows: string[][]): boolean {
+  if (!rows.length) return false;
+  const flat = rows.flat().join(" | ").toLowerCase();
+  return /reviewee/.test(flat) && (/job\s*title/.test(flat) || /position/.test(flat) || /department/.test(flat));
+}
+
+function parseEmployeeTable(rows: string[][]): { name: string; position: string } {
+  let name = "";
+  let position = "";
+  for (const r of rows) {
+    for (let c = 0; c < r.length; c++) {
+      const label = (r[c] ?? "").trim().toLowerCase().replace(/[:\s]+$/, "");
+      const value = (r[c + 1] ?? "").trim();
+      if (!value) continue;
+      if (!name && /^reviewee(\s*name)?$/.test(label)) name = value;
+      if (!position && /^(job\s*title|position|role)$/.test(label)) position = value;
     }
   }
-  // Row 4 = Reviewer commentary. Strip the leading "Reviewer Commentary:" label.
-  const commentaryRow = rows[4] ?? [];
-  const commentary = commentaryRow
-    .filter((c) => c && c.trim())
-    .join("\n")
-    .trim()
-    .replace(/^reviewer\s+commentary\s*:?\s*/i, "")
-    .trim();
-  return { competency_name: name, rating_code, commentary };
+  return { name, position };
 }
 
-// Strict heading patterns — anchored to the start of a paragraph so guidance prose
-// (e.g. "This section is an opportunity to explore overall performance...") is NOT
-// treated as a heading.
+function detectBryonCompetencyTable(rows: string[][]): CompetencyName | null {
+  if (rows.length < 2 || (rows[0]?.length ?? 0) < 5) return null;
+  const header = rows[0].map((c) => c.toLowerCase());
+  const looksRating = header.some((h) => /excellent/.test(h)) || header.some((h) => /needs\s*improvement/.test(h));
+  if (!looksRating) return null;
+  const name = rows[0][0]?.trim() ?? "";
+  return COMPETENCY_NAMES.find((n) => name.toLowerCase().includes(n.toLowerCase())) ?? null;
+}
+
+function parseBryonCompetency(rows: string[][], name: CompetencyName): ParsedCompetency {
+  const counts: Partial<Record<RatingCode, number>> = {};
+  const lines: string[] = [];
+  for (let i = 1; i < rows.length; i++) {
+    const r = rows[i];
+    for (let c = 2; c <= 5; c++) {
+      if (isMarked(r[c] ?? "")) {
+        const code = RATING_BY_COL[c];
+        counts[code] = (counts[code] ?? 0) + 1;
+        break;
+      }
+    }
+    const textCells = [r[0], r[1], ...(r.slice(6) ?? [])].map((x) => (x ?? "").trim()).filter(Boolean);
+    if (textCells.length) lines.push(textCells.join(" — "));
+  }
+  const order: RatingCode[] = ["NI", "M", "G", "E"];
+  let rating_code: RatingCode | null = null;
+  for (const code of Object.keys(counts) as RatingCode[]) {
+    if (
+      rating_code === null ||
+      counts[code]! > counts[rating_code]! ||
+      (counts[code] === counts[rating_code] && order.indexOf(code) > order.indexOf(rating_code))
+    ) {
+      rating_code = code;
+    }
+  }
+  return { competency_name: name, rating_code, commentary: lines.join("\n").trim() };
+}
+
+// Overall-rating tables (Tables 8 & 9): rows labelled E / G / M / NI with an X.
+function looksLikeOverallRatingTable(rows: string[][]): boolean {
+  if (rows.length < 3) return false;
+  const labels = rows.map((r) => (r[0] ?? "").trim().toLowerCase());
+  const hits = labels.filter((l) => /^(e|g|m|ni)\b/.test(l) || /^(excellent|good|meets|needs)/.test(l)).length;
+  return hits >= 3 && !detectBryonCompetencyTable(rows);
+}
+
+function rowLabelToCode(label: string): RatingCode | null {
+  const l = label.trim().toLowerCase();
+  if (/^ni\b/.test(l) || /^needs/.test(l)) return "NI";
+  if (/^e\b/.test(l) || /^excellent/.test(l)) return "E";
+  if (/^g\b/.test(l) || /^good/.test(l)) return "G";
+  if (/^m\b/.test(l) || /^meets/.test(l)) return "M";
+  return null;
+}
+
+function parseOverallRatingTable(rows: string[][]): RatingCode | null {
+  for (const r of rows) {
+    const code = rowLabelToCode(r[0] ?? "");
+    if (!code) continue;
+    for (let c = 1; c < r.length; c++) {
+      const cellVal = (r[c] ?? "").trim();
+      if (!cellVal) continue;
+      // Skip descriptive prose cells; only accept short marks.
+      if (cellVal.length <= 3 && isMarked(cellVal)) return code;
+    }
+  }
+  return null;
+}
+
+function looksLikeDevPlanTable(rows: string[][]): boolean {
+  if (rows.length < 2) return false;
+  const header = rows[0].map((c) => c.toLowerCase());
+  return header.some((h) => /objective/.test(h)) && header.some((h) => /activit/.test(h));
+}
+
+function parseBryonDevPlan(rows: string[][]): ParsedDevPlanRow[] {
+  const out: ParsedDevPlanRow[] = [];
+  for (let i = 1; i < rows.length; i++) {
+    const r = rows[i];
+    const objective = (r[0] ?? "").trim();
+    const activities = (r[1] ?? "").trim();
+    const support = (r[2] ?? "").trim();
+    if (!objective && !activities && !support) continue;
+    if (!objective) continue;
+    if (/^\[fill in here\]$/i.test(objective)) continue;
+    out.push({
+      objective,
+      activities,
+      support_resources: support,
+      target_date: normalizeDate((r[3] ?? "").trim()),
+    });
+  }
+  return out;
+}
+
+function isBryonFormat(blocks: Block[]): boolean {
+  const tables = blocks.filter((b) => b.kind === "table") as Extract<Block, { kind: "table" }>[];
+  if (tables.length < 8) return false;
+  if (!tables.some((t) => looksLikeEmployeeTable(t.rows))) return false;
+  const comps = tables.filter((t) => detectBryonCompetencyTable(t.rows)).length;
+  return comps >= 3;
+}
+
+function parseBryonDocument(blocks: Block[]): ParsedPdr {
+  const warnings: string[] = [];
+  const tables = blocks.filter((b) => b.kind === "table").map((b) => (b as { rows: string[][] }).rows);
+  const paras = blocks.filter((b) => b.kind === "para").map((b) => (b as { text: string }).text);
+
+  // Table 1 — employee info
+  const empTable = tables.find(looksLikeEmployeeTable);
+  const employee = empTable ? parseEmployeeTable(empTable) : { name: "", position: "" };
+  if (!employee.name) warnings.push("Employee name not found in the header table");
+
+  // Tables 3-7 — competencies
+  const competencies: ParsedCompetency[] = [];
+  for (const rows of tables) {
+    const name = detectBryonCompetencyTable(rows);
+    if (name && !competencies.find((c) => c.competency_name === name)) {
+      competencies.push(parseBryonCompetency(rows, name));
+    }
+  }
+  for (const n of COMPETENCY_NAMES) {
+    if (!competencies.find((c) => c.competency_name === n)) {
+      competencies.push({ competency_name: n, rating_code: null, commentary: "" });
+      warnings.push(`Competency "${n}" not found in document`);
+    }
+  }
+  competencies.sort((a, b) => COMPETENCY_NAMES.indexOf(a.competency_name) - COMPETENCY_NAMES.indexOf(b.competency_name));
+
+  // Tables 8 & 9 — self assessment then reviewer assessment. The reviewer's is definitive.
+  const ratingTables = tables.filter(looksLikeOverallRatingTable);
+  let current_year_rating_code: RatingCode | null = null;
+  if (ratingTables.length >= 2) {
+    current_year_rating_code = parseOverallRatingTable(ratingTables[ratingTables.length - 1]);
+  } else if (ratingTables.length === 1) {
+    current_year_rating_code = parseOverallRatingTable(ratingTables[0]);
+    warnings.push("Only one overall rating table found — used it as the reviewer rating");
+  }
+  if (!current_year_rating_code) warnings.push("Reviewer's overall rating not detected");
+
+  // Table 10 — reviewee commentary (single-column free text block)
+  let performance_summary = "";
+  const commentaryTable = tables.find(
+    (rows) =>
+      rows.length <= 3 &&
+      rows.every((r) => r.length <= 2) &&
+      rows.flat().join(" ").trim().length > 0 &&
+      !looksLikeDevPlanTable(rows) &&
+      !looksLikeEmployeeTable(rows) &&
+      !looksLikeOverallRatingTable(rows),
+  );
+  if (commentaryTable) {
+    performance_summary = commentaryTable
+      .flat()
+      .map((c) => c.trim())
+      .filter((c) => c && !/^reviewee\s+commentary:?$/i.test(c) && !/^\[fill in here\]$/i.test(c))
+      .join("\n")
+      .trim();
+  }
+  if (!performance_summary) warnings.push("Overall performance summary (Reviewee Commentary) not detected");
+
+  // Table 11 — development plan
+  const devTable = tables.find(looksLikeDevPlanTable);
+  const dev_plan = devTable ? parseBryonDevPlan(devTable) : [];
+  if (!dev_plan.length) warnings.push("No development plan rows detected");
+
+  // Free-text sections from paragraphs
+  const bff_summary = collectAnswer(paras, /^(my\s+)?bigger,?\s*brighter\s*future/i);
+  const performance_what_went_well = collectAnswer(paras, /^what\s+has\s+gone\s+well/i);
+  const performance_what_could_go_better = collectAnswer(paras, /^what\s+could\s+have\s+gone\s+better/i);
+  const career_aspirations_summary = collectAnswer(paras, /^career\s+aspirations?/i);
+
+  return {
+    employee,
+    bff_summary,
+    performance_what_went_well,
+    performance_what_could_go_better,
+    performance_summary,
+    career_aspirations_summary,
+    current_year_rating_code,
+    current_year_rating: current_year_rating_code ? NUMERIC_BY_CODE[current_year_rating_code] : null,
+    competencies,
+    dev_plan,
+    warnings,
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* Legacy parser (earlier simplified template) — kept for compat        */
+/* ------------------------------------------------------------------ */
+
 const KNOWN_HEADING_PATTERNS: RegExp[] = [
   /^summary\s+of\s+overall\s+performance/i,
   /^overall\s+performance\s+summary/i,
@@ -127,7 +411,6 @@ const KNOWN_HEADING_PATTERNS: RegExp[] = [
   /^reviewee\s+commentary/i,
 ];
 
-// Template guidance prose — skipped when collecting the typed answer.
 const GUIDANCE_PATTERNS: RegExp[] = [
   /^this\s+section\s+is\b/i,
   /^this\s+is\s+an\s+opportunity/i,
@@ -139,8 +422,7 @@ const GUIDANCE_PATTERNS: RegExp[] = [
 
 function isKnownHeading(p: string): boolean {
   const t = p.trim();
-  if (!t) return false;
-  if (t.length > 120) return false;
+  if (!t || t.length > 120) return false;
   return KNOWN_HEADING_PATTERNS.some((r) => r.test(t));
 }
 
@@ -150,14 +432,11 @@ function isGuidance(p: string): boolean {
   return GUIDANCE_PATTERNS.some((r) => r.test(t));
 }
 
-// Find a heading paragraph (strict match), then collect the answer that follows,
-// skipping template guidance and stopping at the next known heading.
-// If nothing usable is captured, return "" so the manager fills it in the modal.
 function findAnswerAfterHeading(paragraphs: string[], headingRe: RegExp): string {
   for (let i = 0; i < paragraphs.length; i++) {
     const t = paragraphs[i].trim();
     if (!headingRe.test(t)) continue;
-    if (!isKnownHeading(t)) continue; // must look like an actual heading
+    if (!isKnownHeading(t)) continue;
     const collected: string[] = [];
     const after = t.replace(headingRe, "").replace(/^[:\-\s]+/, "").trim();
     if (after && !isGuidance(after) && !isKnownHeading(after)) collected.push(after);
@@ -175,14 +454,35 @@ function findAnswerAfterHeading(paragraphs: string[], headingRe: RegExp): string
   return "";
 }
 
-function parseDevPlan(tables: string[][][]): ParsedDevPlanRow[] {
-  // Find a table whose header row mentions "Development Objectives" (or "Objective")
+function detectLegacyCompetencyTable(rows: string[][]): CompetencyName | null {
+  if (rows.length < 3 || rows[0].length < 6) return null;
+  const name = rows[0][0]?.trim();
+  if (!name) return null;
+  return COMPETENCY_NAMES.find((n) => name.toLowerCase().includes(n.toLowerCase())) ?? null;
+}
+
+function parseLegacyCompetency(rows: string[][], name: CompetencyName): ParsedCompetency {
+  const reviewerRow = rows[2] ?? [];
+  let rating_code: RatingCode | null = null;
+  for (let c = 2; c <= 5; c++) {
+    if (isMarked(reviewerRow[c] ?? "")) {
+      rating_code = RATING_BY_COL[c];
+      break;
+    }
+  }
+  const commentaryRow = rows[4] ?? [];
+  const commentary = commentaryRow
+    .filter((c) => c && c.trim())
+    .join("\n")
+    .trim()
+    .replace(/^reviewer\s+commentary\s*:?\s*/i, "")
+    .trim();
+  return { competency_name: name, rating_code, commentary };
+}
+
+function parseLegacyDevPlan(tables: string[][][]): ParsedDevPlanRow[] {
   for (const rows of tables) {
-    if (rows.length < 2) continue;
-    const header = rows[0].map((c) => c.toLowerCase());
-    const hasObj = header.some((h) => /(development\s+)?objective/.test(h));
-    const hasAct = header.some((h) => /activit/.test(h));
-    if (!hasObj || !hasAct) continue;
+    if (!looksLikeDevPlanTable(rows)) continue;
     const out: ParsedDevPlanRow[] = [];
     for (let i = 1; i < rows.length; i++) {
       const r = rows[i];
@@ -200,18 +500,8 @@ function parseDevPlan(tables: string[][][]): ParsedDevPlanRow[] {
   return [];
 }
 
-function normalizeDate(s: string): string | null {
-  if (!s) return null;
-  // Try ISO first
-  const iso = s.match(/(\d{4})-(\d{2})-(\d{2})/);
-  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
-  // DD/MM/YYYY or MM/DD/YYYY — store null if ambiguous; reviewer can fix in modal
-  return null;
-}
-
 function deriveOverallRating(comps: ParsedCompetency[]): RatingCode | null {
   const order: RatingCode[] = ["NI", "M", "G", "E"];
-  // Most frequent; tiebreak by highest in order
   const counts: Record<string, number> = {};
   for (const c of comps) if (c.rating_code) counts[c.rating_code] = (counts[c.rating_code] ?? 0) + 1;
   const keys = Object.keys(counts);
@@ -223,6 +513,64 @@ function deriveOverallRating(comps: ParsedCompetency[]): RatingCode | null {
     }
   }
   return best as RatingCode;
+}
+
+function parseLegacyDocument(blocks: Block[]): ParsedPdr {
+  const warnings: string[] = [];
+  const tables = blocks.filter((b) => b.kind === "table").map((b) => (b as { rows: string[][] }).rows);
+  const paragraphs = blocks.filter((b) => b.kind === "para").map((b) => (b as { text: string }).text);
+
+  const competencies: ParsedCompetency[] = [];
+  for (const rows of tables) {
+    const name = detectLegacyCompetencyTable(rows);
+    if (name && !competencies.find((c) => c.competency_name === name)) {
+      competencies.push(parseLegacyCompetency(rows, name));
+    }
+  }
+  for (const n of COMPETENCY_NAMES) {
+    if (!competencies.find((c) => c.competency_name === n)) {
+      competencies.push({ competency_name: n, rating_code: null, commentary: "" });
+      warnings.push(`Competency "${n}" not found in document`);
+    }
+  }
+  competencies.sort((a, b) => COMPETENCY_NAMES.indexOf(a.competency_name) - COMPETENCY_NAMES.indexOf(b.competency_name));
+
+  const cellTexts: string[] = [];
+  for (const rows of tables) for (const r of rows) for (const c of r) if (c.trim()) cellTexts.push(c.trim());
+  const searchPool = [...paragraphs, ...cellTexts];
+
+  const bff_summary = findAnswerAfterHeading(searchPool, /^(my\s+)?bigger,?\s*brighter\s*future/i);
+  const performance_what_went_well = findAnswerAfterHeading(searchPool, /^what\s+(has\s+)?gone\s+well|^what\s+went\s+well/i);
+  const performance_what_could_go_better = findAnswerAfterHeading(searchPool, /^what\s+could\s+(have\s+)?gone?\s+better|^what\s+could\s+go\s+better/i);
+  const performance_summary = findAnswerAfterHeading(searchPool, /^summary\s+of\s+overall\s+performance|^overall\s+performance\s+summary|^performance\s+summary/i);
+  const career_aspirations_summary = findAnswerAfterHeading(searchPool, /^career\s+aspirations?/i);
+
+  const dev_plan = parseLegacyDevPlan(tables);
+  if (!dev_plan.length) warnings.push("No development plan rows detected");
+
+  const current_year_rating_code = deriveOverallRating(competencies);
+
+  return {
+    bff_summary,
+    performance_what_went_well,
+    performance_what_could_go_better,
+    performance_summary,
+    career_aspirations_summary,
+    current_year_rating_code,
+    current_year_rating: current_year_rating_code ? NUMERIC_BY_CODE[current_year_rating_code] : null,
+    competencies,
+    dev_plan,
+    warnings,
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* Dispatch + HTTP                                                     */
+/* ------------------------------------------------------------------ */
+
+function parseDocument(xml: string): ParsedPdr {
+  const blocks = documentBlocks(xml);
+  return isBryonFormat(blocks) ? parseBryonDocument(blocks) : parseLegacyDocument(blocks);
 }
 
 async function unzipDocumentXml(bytes: Uint8Array): Promise<string> {
@@ -237,62 +585,6 @@ async function unzipDocumentXml(bytes: Uint8Array): Promise<string> {
   const xml = await entry.getData!(new TextWriter());
   await reader.close();
   return xml as string;
-}
-
-function parseDocument(xml: string): ParsedPdr {
-  const warnings: string[] = [];
-
-  // All <w:tbl> in order
-  const tblMatches = [...xml.matchAll(/<w:tbl\b[\s\S]*?<\/w:tbl>/g)].map((m) => m[0]);
-  const tables = tblMatches.map(tableRows);
-
-  // All top-level paragraphs (best-effort: every <w:p> in the doc)
-  const paragraphs = [...xml.matchAll(/<w:p\b[\s\S]*?<\/w:p>/g)].map((m) => paragraphText(m[0]).trim()).filter(Boolean);
-
-  // Competencies
-  const competencies: ParsedCompetency[] = [];
-  for (const rows of tables) {
-    const name = detectCompetencyTable(rows);
-    if (name && !competencies.find((c) => c.competency_name === name)) {
-      competencies.push(parseCompetency(rows, name));
-    }
-  }
-  for (const n of COMPETENCY_NAMES) {
-    if (!competencies.find((c) => c.competency_name === n)) {
-      competencies.push({ competency_name: n, rating_code: null, commentary: "" });
-      warnings.push(`Competency "${n}" not found in document`);
-    }
-  }
-  // Reorder to canonical
-  competencies.sort((a, b) => COMPETENCY_NAMES.indexOf(a.competency_name) - COMPETENCY_NAMES.indexOf(b.competency_name));
-
-  // Text fields — search both paragraphs AND table cells (firm template may embed them in tables)
-  const cellTexts: string[] = [];
-  for (const rows of tables) for (const r of rows) for (const c of r) if (c.trim()) cellTexts.push(c.trim());
-  const searchPool = [...paragraphs, ...cellTexts];
-
-  const bff_summary = findAnswerAfterHeading(searchPool, /^(my\s+)?bigger,?\s*brighter\s*future/i);
-  const performance_what_went_well = findAnswerAfterHeading(searchPool, /^what\s+(has\s+)?gone\s+well|^what\s+went\s+well/i);
-  const performance_what_could_go_better = findAnswerAfterHeading(searchPool, /^what\s+could\s+(have\s+)?gone?\s+better|^what\s+could\s+go\s+better/i);
-  const performance_summary = findAnswerAfterHeading(searchPool, /^summary\s+of\s+overall\s+performance|^overall\s+performance\s+summary|^performance\s+summary/i);
-  const career_aspirations_summary = findAnswerAfterHeading(searchPool, /^career\s+aspirations?/i);
-
-  const dev_plan = parseDevPlan(tables);
-  if (!dev_plan.length) warnings.push("No development plan rows detected");
-
-  const current_year_rating_code = deriveOverallRating(competencies);
-
-  return {
-    bff_summary,
-    performance_what_went_well,
-    performance_what_could_go_better,
-    performance_summary,
-    career_aspirations_summary,
-    current_year_rating_code,
-    competencies,
-    dev_plan,
-    warnings,
-  };
 }
 
 Deno.serve(async (req) => {
@@ -344,4 +636,4 @@ Deno.serve(async (req) => {
 });
 
 // Export for tests
-export { parseDocument };
+export { parseDocument, parseBryonDocument, parseLegacyDocument, documentBlocks };

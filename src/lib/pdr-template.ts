@@ -1,25 +1,28 @@
-// Generates a .docx PDR template matching the structure the parse-pdr edge
-// function expects. Run in the browser; returns a Blob ready to download.
+// Generates a .docx PDR template matching Clearhouse's real PDR structure
+// (the "Bryon" format) that the parse-pdr edge function parses automatically.
 //
-// Parser-critical constraints baked in here (do NOT change without re-checking
+// Parser-critical constraints (do NOT change without re-checking
 // supabase/functions/parse-pdr/index.ts):
-//  - Each competency is its OWN table whose row 0, cell 0 holds the competency
-//    name; row 2 cells 2..5 are the rating cells (E/G/M/NI) the reviewer marks;
-//    row 4 holds the reviewer commentary. detectCompetencyTable requires
-//    rows[0].length >= 6 and rows.length >= 3.
-//  - Free-text answer headings must match the parser's KNOWN_HEADING_PATTERNS
-//    exactly at the start of the paragraph ("What Has Gone Well", "What Could
-//    Have Gone Better", "Summary of Overall Performance", "Bigger, Brighter
-//    Future", "Career Aspirations").
-//  - The development plan table header row must contain "Objective(s)" and
+//  - Table 1 must contain the labels "Reviewee" and "Job Title" with the value
+//    in the cell immediately to the right.
+//  - Each competency is its own table whose row 0 is
+//    [{Competency}, Rating, Excellent, Good, Meets, Needs Improvement];
+//    data rows are success factors, with the X mark placed in columns 2..5.
+//  - Two overall-rating tables follow the competencies (reviewee first, then
+//    reviewer). Each has 4 rows whose first cell is E / G / M / NI; the mark
+//    goes in a short cell on that row. The LAST of the two is definitive.
+//  - The reviewee commentary table is a single-column table (max 3 rows).
+//  - The development plan table header must contain "Objectives" and
 //    "Activities"; data rows put the objective in column 0.
+//  - Free-text headings must read exactly: "My Bigger, Brighter Future",
+//    "What has gone well?", "What could have gone better?",
+//    "Career Aspirations".
 
 import {
   AlignmentType,
   BorderStyle,
   Document,
   HeadingLevel,
-  LevelFormat,
   Packer,
   Paragraph,
   ShadingType,
@@ -45,22 +48,24 @@ function run(text: string, opts: { bold?: boolean; italics?: boolean; size?: num
     text,
     bold: opts.bold,
     italics: opts.italics,
-    size: opts.size ?? 22, // 11pt
+    size: opts.size ?? 22,
     font: FONT,
     color: opts.color,
   });
 }
 
-function para(children: TextRun[], opts: { align?: Align; spacing?: number; heading?: typeof HeadingLevel.HEADING_1 } = {}) {
+function para(children: TextRun[], opts: { align?: Align; spacing?: number } = {}) {
   return new Paragraph({
     alignment: opts.align,
-    heading: opts.heading,
     spacing: { after: opts.spacing ?? 140 },
     children,
   });
 }
 
-function plain(text: string, opts: { bold?: boolean; italics?: boolean; size?: number; color?: string; align?: Align; spacing?: number } = {}) {
+function plain(
+  text: string,
+  opts: { bold?: boolean; italics?: boolean; size?: number; color?: string; align?: Align; spacing?: number } = {},
+) {
   return para([run(text, opts)], { align: opts.align, spacing: opts.spacing });
 }
 
@@ -78,166 +83,219 @@ function cell(text: string, opts: { bold?: boolean; shading?: string; width: num
   });
 }
 
-// One competency table. Row 0 = name + rating headers; row 2 = reviewer mark
-// cells (cols 2..5 = E/G/M/NI, left blank); row 4 = reviewer commentary.
-function competencyTable(name: string): Table {
-  const cols = [1700, 1500, 600, 600, 600, 600, 3300];
+function tableOf(cols: number[], rows: string[][], opts: { headerBold?: boolean } = {}): Table {
   const total = cols.reduce((a, b) => a + b, 0);
-  const spacerCells = () => cols.map((w) => cell("", { width: w }));
-  const headerCells = [
-    cell(name, { bold: true, shading: HEADER_SHADE, width: cols[0] }),
-    cell("Rating (mark X)", { bold: true, shading: HEADER_SHADE, width: cols[1] }),
-    cell("E", { bold: true, shading: HEADER_SHADE, width: cols[2], align: AlignmentType.CENTER }),
-    cell("G", { bold: true, shading: HEADER_SHADE, width: cols[3], align: AlignmentType.CENTER }),
-    cell("M", { bold: true, shading: HEADER_SHADE, width: cols[4], align: AlignmentType.CENTER }),
-    cell("NI", { bold: true, shading: HEADER_SHADE, width: cols[5], align: AlignmentType.CENTER }),
-    cell("Reviewer Commentary", { bold: true, shading: HEADER_SHADE, width: cols[6] }),
-  ];
-  const reviewerCells = [
-    cell("Reviewer rating", { width: cols[0] }),
-    cell("", { width: cols[1] }),
-    cell("", { width: cols[2], align: AlignmentType.CENTER }),
-    cell("", { width: cols[3], align: AlignmentType.CENTER }),
-    cell("", { width: cols[4], align: AlignmentType.CENTER }),
-    cell("", { width: cols[5], align: AlignmentType.CENTER }),
-    cell("", { width: cols[6] }),
-  ];
-  const commentaryCells = [
-    cell("", { width: cols[0] }),
-    cell("", { width: cols[1] }),
-    cell("", { width: cols[2] }),
-    cell("", { width: cols[3] }),
-    cell("", { width: cols[4] }),
-    cell("", { width: cols[5] }),
-    cell("[Fill in here]", { width: cols[6] }),
-  ];
   return new Table({
     width: { size: total, type: WidthType.DXA },
     columnWidths: cols,
-    rows: [
-      new TableRow({ tableHeader: true, children: headerCells }),
-      new TableRow({ children: spacerCells() }),
-      new TableRow({ children: reviewerCells }),
-      new TableRow({ children: spacerCells() }),
-      new TableRow({ children: commentaryCells }),
-    ],
+    rows: rows.map(
+      (r, i) =>
+        new TableRow({
+          tableHeader: i === 0 && opts.headerBold,
+          children: cols.map((w, c) =>
+            cell(r[c] ?? "", {
+              width: w,
+              bold: i === 0 && opts.headerBold,
+              shading: i === 0 && opts.headerBold ? HEADER_SHADE : undefined,
+              align: i === 0 && opts.headerBold && c >= 2 ? AlignmentType.CENTER : undefined,
+            }),
+          ),
+        }),
+    ),
   });
-}
-
-function devPlanTable(): Table {
-  const cols = [2400, 2400, 2400, 1600];
-  const total = cols.reduce((a, b) => a + b, 0);
-  const header = new TableRow({
-    tableHeader: true,
-    children: [
-      cell("Development Objectives", { bold: true, shading: HEADER_SHADE, width: cols[0] }),
-      cell("Activities to Undertake", { bold: true, shading: HEADER_SHADE, width: cols[1] }),
-      cell("Support & Resources Needed", { bold: true, shading: HEADER_SHADE, width: cols[2] }),
-      cell("Target Date", { bold: true, shading: HEADER_SHADE, width: cols[3] }),
-    ],
-  });
-  const blankRow = () => new TableRow({ children: cols.map((w) => cell("", { width: w })) });
-  return new Table({
-    width: { size: total, type: WidthType.DXA },
-    columnWidths: cols,
-    rows: [header, blankRow(), blankRow(), blankRow()],
-  });
-}
-
-function infoLine(label: string) {
-  return para([run(`${label}: `, { bold: true }), run("_______________________________")], { spacing: 80 });
 }
 
 function sectionHeading(text: string) {
-  return para([run(text, { bold: true, size: 26, color: PRIMARY })], { heading: HeadingLevel.HEADING_1, spacing: 120 });
+  return new Paragraph({
+    heading: HeadingLevel.HEADING_1,
+    spacing: { before: 240, after: 120 },
+    children: [run(text, { bold: true, size: 26, color: PRIMARY })],
+  });
 }
 
-const COMPETENCIES = ["Thought", "Results", "Expertise", "People", "Self"] as const;
+/* ---------------------------------------------------------------- */
+
+const COMPETENCIES: { name: string; factors: string[] }[] = [
+  { name: "Thought", factors: ["Strategic perspective", "Problem solving & judgement", "Innovation & improvement"] },
+  { name: "Results", factors: ["Delivery & accountability", "Quality of work", "Commercial awareness"] },
+  { name: "Expertise", factors: ["Technical knowledge", "Applying expertise", "Continuous learning"] },
+  { name: "People", factors: ["Collaboration & teamwork", "Communication", "Coaching & developing others"] },
+  { name: "Self", factors: ["Self-awareness", "Resilience & adaptability", "Professionalism & integrity"] },
+];
+
+const RATING_ROWS: [string, string][] = [
+  ["E", "Excellent — consistently exceeds expectations"],
+  ["G", "Good — frequently exceeds expectations"],
+  ["M", "Meets — performs to the standard expected"],
+  ["NI", "Needs Improvement — below the standard expected"],
+];
+
+function employeeTable(): Table {
+  return tableOf(
+    [1900, 3200, 1900, 3200],
+    [
+      ["Reviewee", "", "Job Title", ""],
+      ["Department", "", "Location", ""],
+      ["Reviewer", "", "Review Date", ""],
+    ],
+  );
+}
+
+function ratingLegendTable(): Table {
+  return tableOf(
+    [900, 2400, 6900],
+    [
+      ["Rating", "Label", "Description"],
+      ...RATING_ROWS.map(([code, desc]) => [code, desc.split(" — ")[0], desc.split(" — ")[1] ?? ""]),
+    ],
+    { headerBold: true },
+  );
+}
+
+function competencyTable(name: string, factors: string[]): Table {
+  const cols = [3000, 1400, 1400, 1200, 1200, 2000];
+  const rows: string[][] = [[name, "Rating", "Excellent", "Good", "Meets", "Needs Improvement"]];
+  for (const f of factors) rows.push([f, "", "", "", "", ""]);
+  return tableOf(cols, rows, { headerBold: true });
+}
+
+function overallRatingTable(who: string): Table {
+  return tableOf(
+    [900, 6600, 2700],
+    [
+      ["Rating", "Description", `${who} mark (X)`],
+      ...RATING_ROWS.map(([code, desc]) => [code, desc, ""]),
+    ],
+    { headerBold: true },
+  );
+}
+
+function commentaryTable(): Table {
+  return tableOf([10200], [["[Fill in here]"]]);
+}
+
+function devPlanTable(): Table {
+  const cols = [2800, 2800, 2800, 1800];
+  return tableOf(
+    cols,
+    [
+      ["Objectives", "Activities", "Support / Resources Needed", "Target Date"],
+      ["", "", "", ""],
+      ["", "", "", ""],
+      ["", "", "", ""],
+    ],
+    { headerBold: true },
+  );
+}
 
 export async function generatePdrTemplate(): Promise<Blob> {
   const children: Array<Paragraph | Table> = [];
 
-  // Header
   children.push(
-    para([run("Performance Development Review", { bold: true, size: 36, color: PRIMARY })], { align: AlignmentType.CENTER, spacing: 60 }),
+    para([run("Performance Development Review", { bold: true, size: 36, color: PRIMARY })], {
+      align: AlignmentType.CENTER,
+      spacing: 60,
+    }),
   );
-  children.push(plain("Clearhouse LLP — Employee Portal Template", { align: AlignmentType.CENTER, color: "555555", spacing: 240 }));
+  children.push(plain("Clearhouse LLP", { align: AlignmentType.CENTER, color: "555555", spacing: 240 }));
 
-  // Employee information
-  children.push(sectionHeading("Employee Information"));
-  children.push(infoLine("Employee Name"));
-  children.push(infoLine("Position"));
-  children.push(infoLine("Department"));
-  children.push(infoLine("Review Period"));
-  children.push(infoLine("Reviewer / Supervisor"));
+  // 1. Employee Profile
+  children.push(sectionHeading("Employee Profile"));
+  children.push(employeeTable());
   children.push(blank());
 
-  // Section 1: Current Year Performance Rating (decorative — overall rating is
-  // derived from competency ratings by the parser, but kept for human context).
-  children.push(sectionHeading("Section 1: Current Year Performance Rating"));
-  children.push(plain("Overall Rating (E / G / M / NI): _____"));
-  children.push(plain("Rating Description: _____"));
-  children.push(plain("Numeric Rating (0-5): _____"));
+  // 2. Rating legend (ignored by the parser)
+  children.push(plain("Rating Scale", { bold: true }));
+  children.push(ratingLegendTable());
   children.push(blank());
 
-  // Section 2: Overall Performance — free-text. Heading + inline placeholder on
-  // the same line (the parser captures the text after the heading) plus a blank
-  // paragraph for writing room.
-  children.push(sectionHeading("Section 2: Overall Performance"));
-  children.push(plain("What Has Gone Well: [Fill in here]"));
-  children.push(blank());
-  children.push(plain("What Could Have Gone Better: [Fill in here]"));
-  children.push(blank());
-  children.push(plain("Summary of Overall Performance: [Fill in here]"));
+  // 3. Bigger, Brighter Future
+  children.push(sectionHeading("My Bigger, Brighter Future"));
+  children.push(plain("In this section, describe the ambition you are working towards.", { italics: true, color: "777777" }));
+  children.push(plain("[Fill in here]"));
   children.push(blank());
 
-  // Section 3: Core Competency Ratings — one table per competency.
-  children.push(sectionHeading("Section 3: Core Competency Ratings"));
-  children.push(plain("Core Competencies", { bold: true }));
-  for (const name of COMPETENCIES) {
-    children.push(competencyTable(name));
+  // 4. Section One: Looking Back
+  children.push(sectionHeading("Section One: Looking Back"));
+
+  children.push(plain("What has gone well?", { bold: true }));
+  children.push(
+    plain("Consider different elements of your role, the impact you have had and what you are most proud of.", {
+      italics: true,
+      color: "777777",
+    }),
+  );
+  children.push(plain("[Fill in here]"));
+  children.push(blank());
+
+  children.push(plain("What could have gone better?", { bold: true }));
+  children.push(
+    plain("Do you feel there are areas where a different approach would have led to a better outcome?", {
+      italics: true,
+      color: "777777",
+    }),
+  );
+  children.push(plain("[Fill in here]"));
+  children.push(blank());
+
+  // 5. Core competencies
+  children.push(sectionHeading("Core Competencies"));
+  children.push(
+    plain("Mark X in one rating column for each success factor.", { italics: true, color: "777777" }),
+  );
+  for (const c of COMPETENCIES) {
+    children.push(competencyTable(c.name, c.factors));
     children.push(blank(80));
   }
 
-  // Section 4: Bigger, Brighter Future — heading paragraph (matches parser
-  // pattern) followed by the fill-in answer paragraph.
-  children.push(sectionHeading("Section 4: Bigger, Brighter Future (BFF)"));
-  children.push(plain("Bigger, Brighter Future"));
+  // 6. Overall rating
+  children.push(sectionHeading("Overall Performance Rating"));
+  children.push(plain("Reviewee's assessment", { bold: true }));
+  children.push(overallRatingTable("Reviewee"));
+  children.push(blank(100));
+  children.push(plain("Reviewer's assessment", { bold: true }));
+  children.push(overallRatingTable("Reviewer"));
+  children.push(blank());
+
+  // 7. Reviewee commentary → becomes the overall performance summary
+  children.push(plain("Reviewee Commentary", { bold: true }));
+  children.push(commentaryTable());
+  children.push(blank());
+
+  // 8. Section Two: Looking Forward
+  children.push(sectionHeading("Section Two: Looking Forward"));
+  children.push(plain("Career Aspirations", { bold: true }));
+  children.push(
+    plain("What career growth are you looking for over the next one to three years?", { italics: true, color: "777777" }),
+  );
   children.push(plain("[Fill in here]"));
   children.push(blank());
 
-  // Section 5: Career Aspirations
-  children.push(sectionHeading("Section 5: Career Aspirations"));
-  children.push(plain("Career Aspirations"));
-  children.push(plain("[Fill in here]"));
-  children.push(blank());
-
-  // Section 6: Professional Development Plan
-  children.push(sectionHeading("Section 6: Professional Development Plan"));
-  children.push(plain("Professional Development Plan Summary"));
-  children.push(plain("[Fill in here]"));
-  children.push(blank());
+  // 9. Professional Development Planning
+  children.push(sectionHeading("Professional Development Planning"));
   children.push(devPlanTable());
-  children.push(blank());
-
-  // Section 7: Potential Rating (decorative — not parsed by parse-pdr).
-  children.push(sectionHeading("Section 7: Potential Rating"));
-  children.push(plain("Potential Rating (Well Placed / Ready Now / Ready Soon / Ready Later): _____"));
   children.push(blank(240));
 
-  // Footer
-  children.push(plain("Once filled, upload this file in the employee's Overview → PDRs section of the portal.", { italics: true, color: "777777" }));
+  children.push(
+    plain("Template based on Clearhouse's standard PDR — matches the format our system parses automatically.", {
+      italics: true,
+      color: "777777",
+    }),
+  );
 
   const doc = new Document({
     styles: {
       default: { document: { run: { font: FONT, size: 22 } } },
       paragraphStyles: [
-        { id: "Heading1", name: "Heading 1", basedOn: "Normal", next: "Normal", quickFormat: true, run: { size: 26, bold: true, font: FONT, color: PRIMARY }, paragraph: { spacing: { before: 240, after: 120 }, outlineLevel: 0 } },
-      ],
-    },
-    numbering: {
-      config: [
-        { reference: "bullets", levels: [{ level: 0, format: LevelFormat.BULLET, text: "•", alignment: AlignmentType.LEFT, style: { paragraph: { indent: { left: 720, hanging: 360 } } } }] },
+        {
+          id: "Heading1",
+          name: "Heading 1",
+          basedOn: "Normal",
+          next: "Normal",
+          quickFormat: true,
+          run: { size: 26, bold: true, font: FONT, color: PRIMARY },
+          paragraph: { spacing: { before: 240, after: 120 }, outlineLevel: 0 },
+        },
       ],
     },
     sections: [
@@ -245,7 +303,7 @@ export async function generatePdrTemplate(): Promise<Blob> {
         properties: {
           page: {
             size: { width: 12240, height: 15840 },
-            margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 },
+            margin: { top: 1080, right: 1080, bottom: 1080, left: 1080 },
           },
         },
         children,
