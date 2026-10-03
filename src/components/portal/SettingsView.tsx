@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, ShieldAlert, UserPlus, Users } from "lucide-react";
+import { Copy, KeyRound, Loader2, Pencil, Plus, ShieldAlert, Trash2, UserPlus, Users } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { DepartmentsCard, PositionsCard } from "@/components/portal/settings/LookupManagers";
@@ -98,7 +98,143 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
   const [bulkRunning, setBulkRunning] = useState(false);
   const [bulkCandidates, setBulkCandidates] = useState<{ email: string; name: string }[]>([]);
 
+  // Add / Edit / Delete user dialogs
+  const [addOpen, setAddOpen] = useState(false);
+  const [addName, setAddName] = useState("");
+  const [addEmail, setAddEmail] = useState("");
+  const [addPassword, setAddPassword] = useState("");
+  const [addLevel, setAddLevel] = useState("6");
+  const [adding, setAdding] = useState(false);
+
+  const [editOpen, setEditOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<ProfileRow | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editLevel, setEditLevel] = useState("6");
+  const [editing, setEditing] = useState(false);
+
+  const [deleteTarget, setDeleteTarget] = useState<ProfileRow | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
   const isValidEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+
+  const generatePassword = () => {
+    const upper = "ABCDEFGHJKLMNPQRSTUVWXYZ"; // omit I, O for readability
+    const lower = "abcdefghijkmnopqrstuvwxyz"; // omit l
+    const digits = "23456789"; // omit 0, 1
+    const symbols = "!@#$%&*?";
+    const all = upper + lower + digits + symbols;
+    const bytes = new Uint32Array(16);
+    crypto.getRandomValues(bytes);
+    // guarantee at least one of each category
+    const pick = (set: string, idx: number) => set[bytes[idx] % set.length];
+    const required = [pick(upper, 0), pick(lower, 1), pick(digits, 2), pick(symbols, 3)];
+    const rest = Array.from({ length: 12 }, (_, i) => pick(all, i + 4));
+    const combined = [...required, ...rest];
+    // Fisher-Yates shuffle using fresh randomness
+    const shuffle = new Uint32Array(combined.length);
+    crypto.getRandomValues(shuffle);
+    for (let i = combined.length - 1; i > 0; i--) {
+      const j = shuffle[i] % (i + 1);
+      [combined[i], combined[j]] = [combined[j], combined[i]];
+    }
+    return combined.join("");
+  };
+
+  const copyToClipboard = async (text: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success(`${label} copied to clipboard`);
+    } catch {
+      toast.error("Could not copy to clipboard");
+    }
+  };
+
+  const openAdd = () => {
+    setAddName("");
+    setAddEmail("");
+    setAddPassword("");
+    setAddLevel("6");
+    setAddOpen(true);
+  };
+
+  const createUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!addName.trim()) return toast.error("Full name is required");
+    if (!isValidEmail(addEmail.trim())) return toast.error("A valid email is required");
+    if (addPassword.length < 8) return toast.error("Password must be at least 8 characters");
+    setAdding(true);
+    const { data, error } = await supabase.functions.invoke("admin-manage-user", {
+      body: {
+        action: "create",
+        email: addEmail.trim(),
+        password: addPassword,
+        full_name: addName.trim(),
+        security_level: Number(addLevel),
+      },
+    });
+    setAdding(false);
+    const fnError = (data as { error?: string } | null)?.error;
+    if (error || fnError) {
+      toast.error(fnError || error?.message || "Failed to create user");
+      return;
+    }
+    toast.success(`${addName.trim()} created. Share their password securely.`);
+    setAddOpen(false);
+    qc.invalidateQueries({ queryKey: ["portal-users"] });
+  };
+
+  const openEdit = (u: ProfileRow) => {
+    setEditTarget(u);
+    setEditName(u.full_name ?? "");
+    setEditEmail(u.email ?? "");
+    setEditLevel(String(u.security_level ?? 6));
+    setEditOpen(true);
+  };
+
+  const updateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editTarget) return;
+    if (!editName.trim()) return toast.error("Full name is required");
+    if (!isValidEmail(editEmail.trim())) return toast.error("A valid email is required");
+    setEditing(true);
+    const { data, error } = await supabase.functions.invoke("admin-manage-user", {
+      body: {
+        action: "update",
+        user_id: editTarget.user_id,
+        email: editEmail.trim(),
+        full_name: editName.trim(),
+        security_level: Number(editLevel),
+      },
+    });
+    setEditing(false);
+    const fnError = (data as { error?: string } | null)?.error;
+    if (error || fnError) {
+      toast.error(fnError || error?.message || "Failed to update user");
+      return;
+    }
+    toast.success(`${editName.trim()} updated`);
+    setEditOpen(false);
+    setEditTarget(null);
+    qc.invalidateQueries({ queryKey: ["portal-users"] });
+  };
+
+  const deleteUser = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    const { data, error } = await supabase.functions.invoke("admin-manage-user", {
+      body: { action: "delete", user_id: deleteTarget.user_id },
+    });
+    setDeleting(false);
+    const fnError = (data as { error?: string } | null)?.error;
+    if (error || fnError) {
+      toast.error(fnError || error?.message || "Failed to delete user");
+      return;
+    }
+    toast.success(`${deleteTarget.full_name || "User"} deleted`);
+    setDeleteTarget(null);
+    qc.invalidateQueries({ queryKey: ["portal-users"] });
+  };
 
   const openBulkInvite = async () => {
     const { data, error } = await supabase.from("employees").select("name, email");
@@ -248,8 +384,11 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
               <Button size="sm" variant="outline" onClick={openBulkInvite}>
                 <Users className="h-4 w-4 mr-1.5" /> Invite all employees (email-matched)
               </Button>
-              <Button size="sm" onClick={() => setInviteOpen(true)}>
+              <Button size="sm" variant="outline" onClick={() => setInviteOpen(true)}>
                 <UserPlus className="h-4 w-4 mr-1.5" /> Invite User
+              </Button>
+              <Button size="sm" onClick={openAdd}>
+                <Plus className="h-4 w-4 mr-1.5" /> Add User
               </Button>
             </div>
           )}
@@ -284,6 +423,7 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
                       <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Name</th>
                       <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Linked Employee</th>
                       <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[280px]">Admin Fallback</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[100px]">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -328,12 +468,38 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
                               </SelectContent>
                             </Select>
                           </td>
+                          <td className="px-4 py-2">
+                            {isSelf ? (
+                              <span className="text-xs text-muted-foreground">—</span>
+                            ) : (
+                              <div className="flex gap-1">
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-8 w-8"
+                                  onClick={() => openEdit(u)}
+                                  aria-label={`Edit ${u.full_name || "user"}`}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-8 w-8 text-destructive hover:text-destructive"
+                                  onClick={() => setDeleteTarget(u)}
+                                  aria-label={`Delete ${u.full_name || "user"}`}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            )}
+                          </td>
                         </tr>
                       );
                     })}
                     {users.length === 0 && (
                       <tr>
-                        <td colSpan={3} className="px-4 py-6 text-center text-muted-foreground">
+                        <td colSpan={4} className="px-4 py-6 text-center text-muted-foreground">
                           No users found.
                         </td>
                       </tr>
@@ -369,6 +535,152 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
             <AlertDialogCancel disabled={bulkRunning}>Cancel</AlertDialogCancel>
             <AlertDialogAction disabled={bulkRunning || bulkCandidates.length === 0} onClick={(e) => { e.preventDefault(); runBulkInvite(); }}>
               {bulkRunning ? "Sending…" : "Send invites"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Dialog open={addOpen} onOpenChange={(o) => !adding && setAddOpen(o)}>
+        <DialogContent>
+          <form onSubmit={createUser}>
+            <DialogHeader>
+              <DialogTitle>Add New User</DialogTitle>
+              <DialogDescription>
+                Creates a login account immediately. Share the password with the user through a secure channel — they can change it after their first login.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="add-name">Full name</Label>
+                <Input id="add-name" required value={addName} onChange={(e) => setAddName(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="add-email">Email</Label>
+                <Input id="add-email" type="email" required value={addEmail} onChange={(e) => setAddEmail(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="add-password">Password</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="add-password"
+                    type="text"
+                    required
+                    minLength={8}
+                    value={addPassword}
+                    onChange={(e) => setAddPassword(e.target.value)}
+                    placeholder="At least 8 characters"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setAddPassword(generatePassword())}
+                    aria-label="Generate strong password"
+                    title="Generate strong password"
+                  >
+                    <KeyRound className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => addPassword && copyToClipboard(addPassword, "Password")}
+                    disabled={!addPassword}
+                    aria-label="Copy password"
+                    title="Copy password"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Minimum 8 characters. Click the key icon to generate a strong 16-character password.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label>Admin Fallback Level</Label>
+                <Select value={addLevel} onValueChange={setAddLevel}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {[1, 2, 3, 4, 5, 6].map((lvl) => (
+                      <SelectItem key={lvl} value={String(lvl)}>{LEVEL_LABELS[lvl]}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Leave at Level 6 for regular employees — their actual access follows their position's access rule once they log in. Raise this only for admin accounts that have no matching employee record.
+                </p>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" disabled={adding} onClick={() => setAddOpen(false)}>Cancel</Button>
+              <Button type="submit" disabled={adding}>
+                {adding ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> Creating…</> : "Create User"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={editOpen} onOpenChange={(o) => !editing && setEditOpen(o)}>
+        <DialogContent>
+          <form onSubmit={updateUser}>
+            <DialogHeader>
+              <DialogTitle>Edit User</DialogTitle>
+              <DialogDescription>
+                Update the user's name, email, or admin fallback level. Changing the email will unlink them from their employee record if the new email no longer matches.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-name">Full name</Label>
+                <Input id="edit-name" required value={editName} onChange={(e) => setEditName(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-email">Email</Label>
+                <Input id="edit-email" type="email" required value={editEmail} onChange={(e) => setEditEmail(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Admin Fallback Level</Label>
+                <Select value={editLevel} onValueChange={setEditLevel}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {[1, 2, 3, 4, 5, 6].map((lvl) => (
+                      <SelectItem key={lvl} value={String(lvl)}>{LEVEL_LABELS[lvl]}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" disabled={editing} onClick={() => setEditOpen(false)}>Cancel</Button>
+              <Button type="submit" disabled={editing}>
+                {editing ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> Saving…</> : "Save Changes"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && !deleting && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this user?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteTarget && (
+                <>
+                  This will permanently delete <span className="font-semibold text-foreground">{deleteTarget.full_name || deleteTarget.email || "this user"}</span>'s login account. If they have an employee record, that record will remain. This cannot be undone.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); deleteUser(); }}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> Deleting…</> : "Delete permanently"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
