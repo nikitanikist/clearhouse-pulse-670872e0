@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Copy, KeyRound, Loader2, Pencil, Plus, ShieldAlert, Trash2, UserPlus, Users } from "lucide-react";
+import { Copy, KeyRound, Loader2, Pencil, Plus, ShieldAlert, Trash2, UserCircle2, UserPlus, Users } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { DepartmentsCard, PositionsCard } from "@/components/portal/settings/LookupManagers";
 import DataImport from "@/components/portal/settings/DataImport";
 import AccessRulesCard from "@/components/portal/settings/AccessRulesCard";
+import ChangePasswordDialog from "@/components/portal/ChangePasswordDialog";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useCanManageAccessRules } from "@/hooks/useAccessRules";
 import type { Permissions } from "@/lib/permissions";
@@ -115,6 +116,8 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
 
   const [deleteTarget, setDeleteTarget] = useState<ProfileRow | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  const [passwordOpen, setPasswordOpen] = useState(false);
 
   const isValidEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
 
@@ -366,7 +369,24 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
   return (
     <div className="p-6 max-w-5xl">
       <h1 className="text-2xl font-heading font-bold text-foreground">Settings</h1>
-      <p className="text-sm text-muted-foreground mt-1 mb-6">User & access management</p>
+      <p className="text-sm text-muted-foreground mt-1 mb-6">Account &amp; access management</p>
+
+      <section className="bg-card rounded-lg border border-border p-6 mb-6">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <UserCircle2 className="h-6 w-6 text-primary mt-0.5 shrink-0" />
+            <div>
+              <h2 className="text-lg font-heading font-semibold text-foreground">Account</h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                Manage your own login — change your password at any time.
+              </p>
+            </div>
+          </div>
+          <Button size="sm" variant="outline" onClick={() => setPasswordOpen(true)}>
+            <KeyRound className="h-4 w-4 mr-1.5" /> Change Password
+          </Button>
+        </div>
+      </section>
 
       <section className="bg-card rounded-lg border border-border p-6">
         <div className="flex items-start justify-between gap-4">
@@ -660,6 +680,8 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
           </form>
         </DialogContent>
       </Dialog>
+
+      <ChangePasswordDialog open={passwordOpen} onOpenChange={setPasswordOpen} />
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && !deleting && setDeleteTarget(null)}>
         <AlertDialogContent>

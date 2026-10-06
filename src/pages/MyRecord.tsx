@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogOut, UserCircle2 } from "lucide-react";
+import { KeyRound, LogOut, UserCircle2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEmployees } from "@/hooks/useEmployees";
 import ProfileHeader from "@/components/portal/ProfileHeader";
@@ -9,6 +9,7 @@ import Overview from "@/components/portal/tabs/Overview";
 import InterpersonalSkills from "@/components/portal/tabs/InterpersonalSkills";
 import GrowthPotential from "@/components/portal/tabs/GrowthPotential";
 import ManagementNotes from "@/components/portal/tabs/ManagementNotes";
+import ChangePasswordDialog from "@/components/portal/ChangePasswordDialog";
 
 const tabs = [
   "Profile",
@@ -23,6 +24,7 @@ const MyRecord = () => {
   const { profile, signOut } = useAuth();
   const { data: employees = [], isLoading, error } = useEmployees();
   const [activeTab, setActiveTab] = useState(0);
+  const [passwordOpen, setPasswordOpen] = useState(false);
 
   const employee = employees[0] ?? null;
 
@@ -63,14 +65,25 @@ const MyRecord = () => {
             My Record{employee ? ` — ${employee.name}` : ""}
           </h1>
         </div>
-        <button
-          onClick={handleSignOut}
-          className="flex items-center gap-2 text-xs text-sidebar-foreground/80 hover:text-sidebar-foreground transition-colors"
-        >
-          <LogOut className="h-3.5 w-3.5" />
-          Sign Out
-        </button>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => setPasswordOpen(true)}
+            className="flex items-center gap-2 text-xs text-sidebar-foreground/80 hover:text-sidebar-foreground transition-colors"
+          >
+            <KeyRound className="h-3.5 w-3.5" />
+            Change Password
+          </button>
+          <button
+            onClick={handleSignOut}
+            className="flex items-center gap-2 text-xs text-sidebar-foreground/80 hover:text-sidebar-foreground transition-colors"
+          >
+            <LogOut className="h-3.5 w-3.5" />
+            Sign Out
+          </button>
+        </div>
       </header>
+
+      <ChangePasswordDialog open={passwordOpen} onOpenChange={setPasswordOpen} />
 
       {isLoading && (
         <div className="p-6 space-y-4">
