@@ -13,7 +13,7 @@ import ManagementNotes from "@/components/portal/tabs/ManagementNotes";
 import { type Employee, type SecurityLevel } from "@/data/employees";
 import { ArrowLeft } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useEmployees } from "@/hooks/useEmployees";
+import { useCurrentUserScope, useEmployees } from "@/hooks/useEmployees";
 import SettingsView from "@/components/portal/SettingsView";
 import ReportsView from "@/components/portal/ReportsView";
 
@@ -30,10 +30,22 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { user, profile, signOut } = useAuth();
 
-  // Level 6 (employee self-service) may never reach a manager screen.
+  // Route users to /my-record only when they are TRUE self-service employees:
+  //   - their linked employee's position has visibility_scope = 'self', OR
+  //   - they have no linked employee AND their fallback security_level is 6.
+  // Managers whose fallback happens to be 6 but whose position gives them
+  // broader visibility (own_department / own_reports / all / etc.) stay on
+  // the manager Dashboard.
+  const { data: myScope, isLoading: scopeLoading } = useCurrentUserScope();
   useEffect(() => {
-    if (profile?.security_level === 6) navigate("/my-record", { replace: true });
-  }, [profile, navigate]);
+    if (!profile) return;
+    if (scopeLoading) return;
+    const isSelfOnly = myScope === "self";
+    const noEmployeeAndL6 = myScope === null && profile.security_level === 6;
+    if (isSelfOnly || noEmployeeAndL6) {
+      navigate("/my-record", { replace: true });
+    }
+  }, [profile, myScope, scopeLoading, navigate]);
   const securityLevel: SecurityLevel = (profile?.security_level ?? 1) as SecurityLevel;
 
 

@@ -21,12 +21,18 @@ const tabs = [
 
 const MyRecord = () => {
   const navigate = useNavigate();
-  const { profile, signOut } = useAuth();
+  const { user, profile, signOut } = useAuth();
   const { data: employees = [], isLoading, error } = useEmployees();
   const [activeTab, setActiveTab] = useState(0);
   const [passwordOpen, setPasswordOpen] = useState(false);
 
-  const employee = employees[0] ?? null;
+  // Find THIS user's employee record by email match, not just employees[0].
+  // Managers whose RLS returns multiple employees shouldn't accidentally see
+  // another employee's record on their own "My Record" page.
+  const myEmail = (user?.email ?? "").toLowerCase();
+  const employee =
+    (myEmail && employees.find((e) => (e.email ?? "").toLowerCase() === myEmail)) ||
+    null;
 
   const handleSignOut = async () => {
     await signOut();

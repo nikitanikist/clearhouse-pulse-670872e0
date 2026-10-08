@@ -52,6 +52,41 @@ export const useEmployees = () =>
     },
   });
 
+/**
+ * Returns the current user's effective visibility_scope ('self' | 'all' |
+ * 'own_department' | …) based on their linked employee record's position
+ * access rule. Returns null if the user has no linked employee record OR
+ * their position has no access rule — in which case routing should fall
+ * back to profile.security_level.
+ */
+export const useCurrentUserScope = () =>
+  useQuery({
+    queryKey: ["current-user-scope"],
+    queryFn: async (): Promise<string | null> => {
+      const { data: userData } = await supabase.auth.getUser();
+      const email = userData?.user?.email?.toLowerCase();
+      if (!email) return null;
+
+      const { data: emp } = await supabase
+        .from("employees")
+        .select("position")
+        .ilike("email", email)
+        .limit(1)
+        .maybeSingle();
+
+      const position = (emp as { position?: string } | null)?.position;
+      if (!position) return null;
+
+      const { data: rule } = await supabase
+        .from("access_rules")
+        .select("visibility_scope")
+        .eq("position", position)
+        .maybeSingle();
+
+      return (rule as { visibility_scope?: string } | null)?.visibility_scope ?? null;
+    },
+  });
+
 export const useEmployeeRow = (id: string | undefined) =>
   useQuery({
     queryKey: ["employee", id],
