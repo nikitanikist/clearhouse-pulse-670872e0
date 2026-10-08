@@ -24,6 +24,7 @@ export interface Employee {
   /** ISO date (yyyy-mm-dd) or null. When present, drives the role-tenure display. */
   roleStartDate: string | null;
   supervisor: string;
+  coSupervisor: string;
   /** Null when the employee has not yet been rated. */
   currentYearRating: number | null;
   /** Removed from V2 spec but kept optional for legacy components. */

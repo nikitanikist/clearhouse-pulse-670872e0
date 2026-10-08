@@ -54,6 +54,7 @@ const EmployeeProfile = ({ employee, readOnly = false }: { employee: Employee; r
     joining_date: e.joiningDate ?? "",
     role_start_date: e.roleStartDate ?? "",
     supervisor: e.supervisor,
+    coSupervisor: e.coSupervisor,
     email: e.email,
     phone: e.phone,
   });
@@ -95,6 +96,7 @@ const EmployeeProfile = ({ employee, readOnly = false }: { employee: Employee; r
         joining_date: form.joining_date || null,
         role_start_date: form.role_start_date || null,
         supervisor: form.supervisor,
+        co_supervisor: form.coSupervisor || null,
         email: form.email,
         phone: form.phone,
       } as never)
@@ -113,6 +115,7 @@ const EmployeeProfile = ({ employee, readOnly = false }: { employee: Employee; r
       joiningDate: form.joining_date || null,
       roleStartDate: form.role_start_date || null,
       supervisor: form.supervisor,
+      coSupervisor: form.coSupervisor,
       email: form.email,
       phone: form.phone,
     });
@@ -186,12 +189,22 @@ const EmployeeProfile = ({ employee, readOnly = false }: { employee: Employee; r
               <Label htmlFor="ep-role-start" className={labelCls}>Role Start Date</Label>
               <Input id="ep-role-start" type="date" value={form.role_start_date} onChange={(e) => setForm({ ...form, role_start_date: e.target.value })} className="mt-1.5" />
             </div>
-            <div className="md:col-span-2">
+            <div>
               <Label htmlFor="ep-supervisor" className={labelCls}>Supervisor / Manager</Label>
               <SupervisorCombobox
                 id="ep-supervisor"
                 value={form.supervisor}
                 onChange={(v) => setForm({ ...form, supervisor: v })}
+                employees={allEmployees}
+                excludeId={employee.id}
+              />
+            </div>
+            <div>
+              <Label htmlFor="ep-co-supervisor" className={labelCls}>Co-supervisor (optional)</Label>
+              <SupervisorCombobox
+                id="ep-co-supervisor"
+                value={form.coSupervisor}
+                onChange={(v) => setForm({ ...form, coSupervisor: v })}
                 employees={allEmployees}
                 excludeId={employee.id}
               />
@@ -256,6 +269,9 @@ const EmployeeProfile = ({ employee, readOnly = false }: { employee: Employee; r
             )}
             <Field icon={Calendar} label="Tenure in Current Role" value={roleTenureDisplay} />
             <Field icon={Users} label="Supervisor / Manager" value={local.supervisor} />
+            {local.coSupervisor && (
+              <Field icon={Users} label="Co-supervisor" value={local.coSupervisor} />
+            )}
             <Field icon={Mail} label="Email" value={local.email} />
             <Field icon={Phone} label="Phone" value={local.phone} />
           </div>

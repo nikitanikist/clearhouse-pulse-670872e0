@@ -184,6 +184,7 @@ const EmployeeDirectory = ({ employees, onSelectEmployee, initialFilters }: Empl
     email: "",
     phone: "",
     supervisor: "",
+    coSupervisor: "",
     joining_date: "",
     role_start_date: "",
     current_year_rating_code: "M" as CompetencyRating,
@@ -207,6 +208,7 @@ const EmployeeDirectory = ({ employees, onSelectEmployee, initialFilters }: Empl
       email: form.email.trim(),
       phone: form.phone.trim(),
       supervisor: form.supervisor.trim(),
+      co_supervisor: form.coSupervisor.trim() || null,
       tenure_with_firm: "",
       tenure_in_role: "",
       joining_date: form.joining_date || null,
@@ -566,12 +568,21 @@ const EmployeeDirectory = ({ employees, onSelectEmployee, initialFilters }: Empl
                   {locations.map((l) => <option key={l} value={l}>{l}</option>)}
                 </select>
               </div>
-              <div className="md:col-span-2">
+              <div>
                 <Label htmlFor="emp-supervisor" className="text-xs text-muted-foreground">Supervisor</Label>
                 <SupervisorCombobox
                   id="emp-supervisor"
                   value={form.supervisor}
                   onChange={(v) => setForm({ ...form, supervisor: v })}
+                  employees={employees}
+                />
+              </div>
+              <div>
+                <Label htmlFor="emp-co-supervisor" className="text-xs text-muted-foreground">Co-supervisor (optional)</Label>
+                <SupervisorCombobox
+                  id="emp-co-supervisor"
+                  value={form.coSupervisor}
+                  onChange={(v) => setForm({ ...form, coSupervisor: v })}
                   employees={employees}
                 />
               </div>

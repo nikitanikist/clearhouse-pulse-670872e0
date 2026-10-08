@@ -48,6 +48,7 @@ export interface EmployeeRow {
   joining_date: string | null;
   role_start_date: string | null;
   supervisor: string;
+  co_supervisor: string | null;
   email: string;
   phone: string;
   current_year_rating: number | null;
