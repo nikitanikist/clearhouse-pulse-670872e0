@@ -3,7 +3,19 @@ import { useNavigate } from "react-router-dom";
 import { Lock, Mail, Loader2 } from "lucide-react";
 import clearhouseLogo from "@/assets/clearhouse-logo.png";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 
 const Login = () => {
@@ -12,6 +24,29 @@ const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [sendingReset, setSendingReset] = useState(false);
+
+  const sendResetEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(forgotEmail.trim())) {
+      toast.error("Enter a valid email address");
+      return;
+    }
+    setSendingReset(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), {
+      redirectTo: `${window.location.origin}/login`,
+    });
+    setSendingReset(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success(`Reset email sent to ${forgotEmail.trim()}. Check your inbox.`);
+    setForgotOpen(false);
+    setForgotEmail("");
+  };
 
   useEffect(() => {
     if (!loading && user) {
@@ -82,12 +117,62 @@ const Login = () => {
             Sign In
           </button>
 
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={() => {
+                setForgotEmail(email);
+                setForgotOpen(true);
+              }}
+              className="text-xs text-primary hover:underline"
+            >
+              Forgot your password?
+            </button>
+          </div>
 
           <p className="text-center text-xs text-muted-foreground">
             © 2026 Clearhouse LLP. Internal Use Only.
           </p>
         </form>
       </div>
+
+      <Dialog open={forgotOpen} onOpenChange={(o) => !sendingReset && setForgotOpen(o)}>
+        <DialogContent>
+          <form onSubmit={sendResetEmail}>
+            <DialogHeader>
+              <DialogTitle>Reset your password</DialogTitle>
+              <DialogDescription>
+                Enter your Clearhouse email. We'll send you a link to set a new password.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2 py-4">
+              <Label htmlFor="forgot-email">Email</Label>
+              <Input
+                id="forgot-email"
+                type="email"
+                required
+                value={forgotEmail}
+                onChange={(e) => setForgotEmail(e.target.value)}
+                placeholder="you@clearhouse.ca"
+              />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" disabled={sendingReset} onClick={() => setForgotOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={sendingReset}>
+                {sendingReset ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> Sending…
+                  </>
+                ) : (
+                  "Send reset email"
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

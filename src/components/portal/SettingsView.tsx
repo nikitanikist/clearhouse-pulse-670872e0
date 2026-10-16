@@ -58,22 +58,28 @@ interface EmployeeLink {
   position: string;
 }
 
+// Role shown in the UI. Internally still a 1..6 number for backwards compat,
+// but admins only ever see two meaningful options:
+//   Level 1 → Administrator (sees everyone, can manage settings)
+//   Level 2..6 → Employee (sees only who the supervisor chain says they can)
 const LEVEL_LABELS: Record<number, string> = {
-  1: "Level 1 (Full access)",
-  2: "Level 2 (Manager & below)",
-  3: "Level 3 (Senior Associate & below)",
-  4: "Level 4 (Intermediate & below)",
-  5: "Level 5 (Operations only)",
-  6: "Level 6 (Employee — own record only)",
+  1: "Administrator",
+  2: "Employee",
+  3: "Employee",
+  4: "Employee",
+  5: "Employee",
+  6: "Employee",
 };
 
+// Only two options shown in dropdowns.
+const ROLE_CHOICES = [
+  { value: 1, label: "Administrator — sees every employee and can manage settings" },
+  { value: 6, label: "Employee — sees themselves + anyone in their supervisor chain" },
+];
+
 const LEGEND: { level: number; desc: string }[] = [
-  { level: 1, desc: "Full access — all employees and admin settings." },
-  { level: 2, desc: "Managers and everyone below (Senior Associate, Intermediate, Associate)." },
-  { level: 3, desc: "Senior Associates and below (Intermediate, Associate)." },
-  { level: 4, desc: "Intermediates and Associates only." },
-  { level: 5, desc: "Operations staff only." },
-  { level: 6, desc: "Employee self-service — can view only their own record, read-only." },
+  { level: 1, desc: "Administrator — full access to every employee and admin settings. Grant sparingly." },
+  { level: 6, desc: "Employee — access follows the org chart (supervisor field)." },
 ];
 
 interface PendingChange {
@@ -369,7 +375,7 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
   return (
     <div className="p-6 max-w-5xl">
       <h1 className="text-2xl font-heading font-bold text-foreground">Settings</h1>
-      <p className="text-sm text-muted-foreground mt-1 mb-6">Account &amp; access management</p>
+      <p className="text-sm text-muted-foreground mt-1 mb-6">Manage your account, users, departments, positions, and bulk employee imports.</p>
 
       <section className="bg-card rounded-lg border border-border p-6 mb-6">
         <div className="flex items-start justify-between gap-4">
@@ -391,24 +397,35 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
       <section className="bg-card rounded-lg border border-border p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-lg font-heading font-semibold text-foreground">User & Access Management</h2>
-            <p className="text-sm text-muted-foreground mt-1 mb-2">
-              For users linked to an employee record, access is automatically determined by their POSITION (see Access Rules). This dropdown is only used as a fallback for admin accounts that have no linked employee record — for example, Nikist-owned or partner accounts. Leave as Level 6 (default) for regular employees.
-            </p>
-            <p className="text-xs text-muted-foreground mb-4">
-              Access is now controlled per-position in the Access Rules card below. Per-user overrides have been retired.
+            <h2 className="text-lg font-heading font-semibold text-foreground">Users</h2>
+            <p className="text-sm text-muted-foreground mt-1 mb-4">
+              Every person who can log into the portal. Access follows the org chart (supervisor field) — set <strong>Administrator</strong> only for people who need firm-wide visibility (HR, admin).
             </p>
           </div>
           {isAdmin && (
             <div className="flex flex-wrap gap-2 justify-end">
-              <Button size="sm" variant="outline" onClick={openBulkInvite}>
-                <Users className="h-4 w-4 mr-1.5" /> Invite all employees (email-matched)
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={openBulkInvite}
+                title="Send signup emails to every employee who doesn't yet have a login"
+              >
+                <Users className="h-4 w-4 mr-1.5" /> Email all employees
               </Button>
-              <Button size="sm" variant="outline" onClick={() => setInviteOpen(true)}>
-                <UserPlus className="h-4 w-4 mr-1.5" /> Invite User
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setInviteOpen(true)}
+                title="Send one signup email — the user picks their own password"
+              >
+                <UserPlus className="h-4 w-4 mr-1.5" /> Email one invite
               </Button>
-              <Button size="sm" onClick={openAdd}>
-                <Plus className="h-4 w-4 mr-1.5" /> Add User
+              <Button
+                size="sm"
+                onClick={openAdd}
+                title="Create a login with a password you set now and share with the user"
+              >
+                <Plus className="h-4 w-4 mr-1.5" /> Create user
               </Button>
             </div>
           )}
@@ -441,8 +458,8 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
                   <thead className="bg-muted/40">
                     <tr>
                       <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Name</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Linked Employee</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[280px]">Admin Fallback</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Employee</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[260px]">Role</th>
                       <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[100px]">Actions</th>
                     </tr>
                   </thead>
@@ -463,7 +480,7 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
                           </td>
                           <td className="px-4 py-2">
                             <Select
-                              value={String(u.security_level)}
+                              value={u.security_level === 1 ? "1" : "6"}
                               disabled={isSelf}
                               onValueChange={(v) => {
                                 const toLevel = Number(v);
@@ -480,9 +497,9 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                {[1, 2, 3, 4, 5, 6].map((lvl) => (
-                                  <SelectItem key={lvl} value={String(lvl)}>
-                                    {LEVEL_LABELS[lvl]}
+                                {ROLE_CHOICES.map((c) => (
+                                  <SelectItem key={c.value} value={String(c.value)}>
+                                    {c.label}
                                   </SelectItem>
                                 ))}
                               </SelectContent>
@@ -530,11 +547,14 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
             )}
 
             <div className="mt-6 rounded-md border border-border bg-muted/30 p-4">
-              <h3 className="text-sm font-semibold text-foreground mb-2">Access level legend</h3>
+              <h3 className="text-sm font-semibold text-foreground mb-2">Role guide</h3>
               <ul className="space-y-1 text-sm text-muted-foreground">
                 {LEGEND.map((l) => (
                   <li key={l.level}>
-                    <span className="font-medium text-foreground">Level {l.level}:</span> {l.desc}
+                    <span className="font-medium text-foreground">
+                      {l.level === 1 ? "Administrator" : "Employee"}:
+                    </span>{" "}
+                    {l.desc.replace(/^(Administrator|Employee)\s*—\s*/, "")}
                   </li>
                 ))}
               </ul>
@@ -548,7 +568,7 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
           <AlertDialogHeader>
             <AlertDialogTitle>Invite all employees (email-matched)?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will send signup emails to every employee whose email is not yet in the system. Once they sign up, their access will follow their position's access rule automatically (no admin action needed). {bulkCandidates.length} employees will be emailed. Continue?
+              Sends a signup email to every employee who doesn't yet have a login. They set their own password; access automatically follows the org chart. {bulkCandidates.length} employees will be emailed. Continue?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -617,17 +637,17 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
                 </p>
               </div>
               <div className="space-y-2">
-                <Label>Admin Fallback Level</Label>
+                <Label>Role</Label>
                 <Select value={addLevel} onValueChange={setAddLevel}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {[1, 2, 3, 4, 5, 6].map((lvl) => (
-                      <SelectItem key={lvl} value={String(lvl)}>{LEVEL_LABELS[lvl]}</SelectItem>
+                    {ROLE_CHOICES.map((c) => (
+                      <SelectItem key={c.value} value={String(c.value)}>{c.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  Leave at Level 6 for regular employees — their actual access follows their position's access rule once they log in. Raise this only for admin accounts that have no matching employee record.
+                  Leave as <strong>Employee</strong> for regular staff — their visibility follows the org chart automatically. Pick <strong>Administrator</strong> only for people who need firm-wide access (HR, Nikist admins).
                 </p>
               </div>
             </div>
@@ -660,12 +680,12 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
                 <Input id="edit-email" type="email" required value={editEmail} onChange={(e) => setEditEmail(e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label>Admin Fallback Level</Label>
+                <Label>Role</Label>
                 <Select value={editLevel} onValueChange={setEditLevel}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {[1, 2, 3, 4, 5, 6].map((lvl) => (
-                      <SelectItem key={lvl} value={String(lvl)}>{LEVEL_LABELS[lvl]}</SelectItem>
+                    {ROLE_CHOICES.map((c) => (
+                      <SelectItem key={c.value} value={String(c.value)}>{c.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -727,17 +747,17 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
                 <Input id="invite-email" type="email" required value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label>Admin Fallback Level (rarely needed)</Label>
+                <Label>Role</Label>
                 <Select value={inviteLevel} onValueChange={setInviteLevel}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {[1, 2, 3, 4, 5, 6].map((lvl) => (
-                      <SelectItem key={lvl} value={String(lvl)}>{LEVEL_LABELS[lvl]}</SelectItem>
+                    {ROLE_CHOICES.map((c) => (
+                      <SelectItem key={c.value} value={String(c.value)}>{c.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  For most invites, leave this at Level 6 — the user's access will automatically follow the access rule for their position once they log in with an email that matches an employee record. Only raise this if the invite is for an admin account that has no matching employee record.
+                  Leave as <strong>Employee</strong> for the vast majority of invites — the user's visibility follows the org chart automatically. Pick <strong>Administrator</strong> only when the person needs firm-wide access (HR, Nikist admins).
                 </p>
               </div>
             </div>
@@ -752,7 +772,9 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
       </Dialog>
 
 
-      {(isAdmin || canManageRules) && <AccessRulesCard />}
+      {/* AccessRulesCard retired — supervisor-chain rule (Phase 7L) is now the only access logic.
+          Card hidden from UI but code and data preserved in the DB. */}
+      {false && (isAdmin || canManageRules) && <AccessRulesCard />}
 
       {isAdmin && permissions.can_manage_lookups && (
         <>

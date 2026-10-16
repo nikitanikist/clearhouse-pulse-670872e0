@@ -33,9 +33,27 @@ const DashboardHome = ({ employees, onNavigateToEmployee, onNavigateToSection }:
 
   return (
     <div className="p-6 space-y-6 w-full">
-      <div>
-        <h1 className="text-2xl font-heading font-bold text-foreground">Dashboard</h1>
-        <p className="text-sm text-muted-foreground mt-1">Employee portal overview</p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-heading font-bold text-foreground">Dashboard</h1>
+          <p className="text-sm text-muted-foreground mt-1">Overview of your team at a glance. Click any card below to drill in.</p>
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          <button
+            onClick={() => onNavigateToSection?.("employees", null)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border bg-card text-sm hover:bg-muted/50 transition-colors"
+            title="Browse all employees"
+          >
+            <Users className="h-4 w-4" /> Employees
+          </button>
+          <button
+            onClick={() => onNavigateToSection?.("teams")}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border bg-card text-sm hover:bg-muted/50 transition-colors"
+            title="View employees grouped by department"
+          >
+            <Building2 className="h-4 w-4" /> By Department
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

@@ -343,7 +343,7 @@ const PositionsCard = () => {
         <div>
           <h2 className="text-lg font-heading font-semibold text-foreground">Manage Positions</h2>
           <p className="text-sm text-muted-foreground mt-1 mb-4">
-            Position titles and the visibility tier that controls who can see them. Inactive positions are hidden from dropdowns.
+            Position titles used in employee profiles and the import template. Inactive positions are hidden from dropdowns.
           </p>
         </div>
         <Button size="sm" onClick={openAdd}>
@@ -361,7 +361,6 @@ const PositionsCard = () => {
             <thead className="bg-muted/40">
               <tr>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Name</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[140px]">Visibility</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[90px]">Active</th>
                 <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[120px]">Actions</th>
               </tr>
@@ -372,11 +371,6 @@ const PositionsCard = () => {
                   <td className="px-4 py-2 text-foreground">
                     {p.name}
                     {p.is_active === false && inactiveBadge}
-                  </td>
-                  <td className="px-4 py-2">
-                    <span className="inline-block text-xs font-medium px-2.5 py-1 rounded-full bg-primary/15 text-primary">
-                      Tier {p.visibility_tier}
-                    </span>
                   </td>
                   <td className="px-4 py-2">
                     <Switch
@@ -420,18 +414,6 @@ const PositionsCard = () => {
             <div>
               <Label htmlFor="pos-name" className="text-xs text-muted-foreground">Name *</Label>
               <Input id="pos-name" value={name} onChange={(e) => setName(e.target.value)} className="mt-1.5" />
-            </div>
-            <div>
-              <Label className="text-xs text-muted-foreground">Visibility tier *</Label>
-              <Select value={tier} onValueChange={setTier}>
-                <SelectTrigger className="mt-1.5 h-9"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {[1, 2, 3, 4, 5].map((t) => (
-                    <SelectItem key={t} value={String(t)}>Tier {t}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground mt-2 leading-relaxed">{TIER_HELP}</p>
             </div>
           </div>
           <DialogFooter>

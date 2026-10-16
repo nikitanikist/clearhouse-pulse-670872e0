@@ -190,7 +190,7 @@ const EmployeeProfile = ({ employee, readOnly = false }: { employee: Employee; r
               <Input id="ep-role-start" type="date" value={form.role_start_date} onChange={(e) => setForm({ ...form, role_start_date: e.target.value })} className="mt-1.5" />
             </div>
             <div>
-              <Label htmlFor="ep-supervisor" className={labelCls}>Supervisor / Manager</Label>
+              <Label htmlFor="ep-supervisor" className={labelCls}>Manager</Label>
               <SupervisorCombobox
                 id="ep-supervisor"
                 value={form.supervisor}
@@ -200,7 +200,7 @@ const EmployeeProfile = ({ employee, readOnly = false }: { employee: Employee; r
               />
             </div>
             <div>
-              <Label htmlFor="ep-co-supervisor" className={labelCls}>Co-supervisor (optional)</Label>
+              <Label htmlFor="ep-co-supervisor" className={labelCls}>Second Manager (optional)</Label>
               <SupervisorCombobox
                 id="ep-co-supervisor"
                 value={form.coSupervisor}
@@ -268,9 +268,9 @@ const EmployeeProfile = ({ employee, readOnly = false }: { employee: Employee; r
               <Field icon={Calendar} label="Role Start Date" value={formatDateLong(local.roleStartDate)} />
             )}
             <Field icon={Calendar} label="Tenure in Current Role" value={roleTenureDisplay} />
-            <Field icon={Users} label="Supervisor / Manager" value={local.supervisor} />
+            <Field icon={Users} label="Manager" value={local.supervisor} />
             {local.coSupervisor && (
-              <Field icon={Users} label="Co-supervisor" value={local.coSupervisor} />
+              <Field icon={Users} label="Second Manager" value={local.coSupervisor} />
             )}
             <Field icon={Mail} label="Email" value={local.email} />
             <Field icon={Phone} label="Phone" value={local.phone} />

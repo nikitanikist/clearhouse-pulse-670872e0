@@ -297,7 +297,7 @@ const EmployeeDirectory = ({ employees, onSelectEmployee, initialFilters }: Empl
             <Input
               id="employee-search"
               type="search"
-              placeholder="Search by name, position, department, supervisor..."
+              placeholder="Search by name, position, department, manager..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9 pr-9"
@@ -346,7 +346,7 @@ const EmployeeDirectory = ({ employees, onSelectEmployee, initialFilters }: Empl
               { label: "Location", value: locFilter, setter: setLocFilter, options: locations as readonly string[] },
               { label: "Position", value: posFilter, setter: setPosFilter, options: positions },
               { label: potMulti ? `Potential (${potMulti.join(", ")})` : "Potential", value: potMulti ? "" : potFilter, setter: (v: string) => { setPotMulti(null); setPotFilter(v); }, options: potentials as readonly string[] },
-              { label: "Supervisor", value: supervisorFilter, setter: setSupervisorFilter, options: supervisors },
+              { label: "Manager", value: supervisorFilter, setter: setSupervisorFilter, options: supervisors },
             ].map((f) => (
               <select
                 key={f.label}
@@ -569,7 +569,7 @@ const EmployeeDirectory = ({ employees, onSelectEmployee, initialFilters }: Empl
                 </select>
               </div>
               <div>
-                <Label htmlFor="emp-supervisor" className="text-xs text-muted-foreground">Supervisor</Label>
+                <Label htmlFor="emp-supervisor" className="text-xs text-muted-foreground">Manager</Label>
                 <SupervisorCombobox
                   id="emp-supervisor"
                   value={form.supervisor}
@@ -578,7 +578,7 @@ const EmployeeDirectory = ({ employees, onSelectEmployee, initialFilters }: Empl
                 />
               </div>
               <div>
-                <Label htmlFor="emp-co-supervisor" className="text-xs text-muted-foreground">Co-supervisor (optional)</Label>
+                <Label htmlFor="emp-co-supervisor" className="text-xs text-muted-foreground">Second Manager (optional)</Label>
                 <SupervisorCombobox
                   id="emp-co-supervisor"
                   value={form.coSupervisor}
