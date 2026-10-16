@@ -61,12 +61,14 @@ const DashboardHome = ({ employees, onNavigateToEmployee, onNavigateToSection }:
           icon={Users}
           label="Total Employees"
           value={String(employees.length)}
+          sublabel="Active in the directory"
           onClick={() => onNavigateToSection?.("employees", null)}
         />
         <StatCard
           icon={Building2}
           label="Departments"
           value={deptsLoading ? "…" : String(departments.length)}
+          sublabel="Defined in Settings"
           onClick={() => onNavigateToSection?.("teams")}
         />
         <StatCard
@@ -79,6 +81,7 @@ const DashboardHome = ({ employees, onNavigateToEmployee, onNavigateToSection }:
           icon={TrendingUp}
           label="High Potential"
           value={String(highPotential.length)}
+          sublabel="Ready Now or Well Placed"
           onClick={() => onNavigateToSection?.("employees", { potential: ["Ready Now", "Ready Soon"] })}
         />
       </div>

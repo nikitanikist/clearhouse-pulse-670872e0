@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   DropdownMenu,
@@ -544,78 +544,117 @@ const EmployeeDirectory = ({ employees, onSelectEmployee, initialFilters }: Empl
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Add Employee</DialogTitle>
+              <DialogDescription>
+                Only name is required. The rest can be filled in later. Fields marked * are required.
+              </DialogDescription>
             </DialogHeader>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="md:col-span-2">
-                <Label htmlFor="emp-name" className="text-xs text-muted-foreground">Name *</Label>
-                <Input id="emp-name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="mt-1.5" />
-              </div>
+
+            <div className="space-y-6">
+              {/* Section 1: Basic Info */}
               <div>
-                <Label htmlFor="emp-position" className="text-xs text-muted-foreground">Position *</Label>
-                <select id="emp-position" required value={form.position} onChange={(e) => setForm({ ...form, position: e.target.value as Position })} className="mt-1.5 w-full px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary">
-                  {positions.map((p) => <option key={p} value={p}>{p}</option>)}
-                </select>
+                <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">Basic info</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="md:col-span-2">
+                    <Label htmlFor="emp-name" className="text-xs text-muted-foreground">Name *</Label>
+                    <Input id="emp-name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="mt-1.5" />
+                  </div>
+                  <div>
+                    <Label htmlFor="emp-email" className="text-xs text-muted-foreground">Email</Label>
+                    <Input id="emp-email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="mt-1.5" placeholder="name@clearhouse.ca" />
+                  </div>
+                  <div>
+                    <Label htmlFor="emp-phone" className="text-xs text-muted-foreground">Phone</Label>
+                    <Input id="emp-phone" type="tel" placeholder="+1 (555) 123-4567" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="mt-1.5" />
+                  </div>
+                </div>
               </div>
+
+              {/* Section 2: Role & Team */}
               <div>
-                <Label htmlFor="emp-department" className="text-xs text-muted-foreground">Department *</Label>
-                <select id="emp-department" required value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value as Department })} className="mt-1.5 w-full px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary">
-                  {departments.map((d) => <option key={d} value={d}>{d}</option>)}
-                </select>
+                <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">Role &amp; team</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="emp-position" className="text-xs text-muted-foreground">Position *</Label>
+                    <select id="emp-position" required value={form.position} onChange={(e) => setForm({ ...form, position: e.target.value as Position })} className="mt-1.5 w-full px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+                      {positions.map((p) => <option key={p} value={p}>{p}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <Label htmlFor="emp-department" className="text-xs text-muted-foreground">Department *</Label>
+                    <select id="emp-department" required value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value as Department })} className="mt-1.5 w-full px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+                      {departments.map((d) => <option key={d} value={d}>{d}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <Label htmlFor="emp-location" className="text-xs text-muted-foreground">Location *</Label>
+                    <select id="emp-location" required value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value as Location })} className="mt-1.5 w-full px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+                      {locations.map((l) => <option key={l} value={l}>{l}</option>)}
+                    </select>
+                  </div>
+                  <div />
+                  <div>
+                    <Label htmlFor="emp-supervisor" className="text-xs text-muted-foreground">Manager</Label>
+                    <SupervisorCombobox
+                      id="emp-supervisor"
+                      value={form.supervisor}
+                      onChange={(v) => setForm({ ...form, supervisor: v })}
+                      employees={employees}
+                    />
+                    <p className="text-[11px] text-muted-foreground mt-1">The person this employee reports to. Determines who can see this profile.</p>
+                  </div>
+                  <div>
+                    <Label htmlFor="emp-co-supervisor" className="text-xs text-muted-foreground">Second Manager</Label>
+                    <SupervisorCombobox
+                      id="emp-co-supervisor"
+                      value={form.coSupervisor}
+                      onChange={(v) => setForm({ ...form, coSupervisor: v })}
+                      employees={employees}
+                    />
+                    <p className="text-[11px] text-muted-foreground mt-1">Optional — only if the employee has two co-managers.</p>
+                  </div>
+                </div>
               </div>
+
+              {/* Section 3: Dates */}
               <div>
-                <Label htmlFor="emp-location" className="text-xs text-muted-foreground">Location *</Label>
-                <select id="emp-location" required value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value as Location })} className="mt-1.5 w-full px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary">
-                  {locations.map((l) => <option key={l} value={l}>{l}</option>)}
-                </select>
+                <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">Dates</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="emp-joining-date" className="text-xs text-muted-foreground">Joining Date</Label>
+                    <Input id="emp-joining-date" type="date" value={form.joining_date} onChange={(e) => setForm({ ...form, joining_date: e.target.value })} className="mt-1.5" />
+                    <p className="text-[11px] text-muted-foreground mt-1">When they first joined the firm.</p>
+                  </div>
+                  <div>
+                    <Label htmlFor="emp-role-start" className="text-xs text-muted-foreground">Role Start Date</Label>
+                    <Input id="emp-role-start" type="date" value={form.role_start_date} onChange={(e) => setForm({ ...form, role_start_date: e.target.value })} className="mt-1.5" />
+                    <p className="text-[11px] text-muted-foreground mt-1">When they started their <em>current</em> role (may be the same as joining date).</p>
+                  </div>
+                </div>
               </div>
+
+              {/* Section 4: Current Year Performance (optional) */}
               <div>
-                <Label htmlFor="emp-supervisor" className="text-xs text-muted-foreground">Manager</Label>
-                <SupervisorCombobox
-                  id="emp-supervisor"
-                  value={form.supervisor}
-                  onChange={(v) => setForm({ ...form, supervisor: v })}
-                  employees={employees}
-                />
-              </div>
-              <div>
-                <Label htmlFor="emp-co-supervisor" className="text-xs text-muted-foreground">Second Manager (optional)</Label>
-                <SupervisorCombobox
-                  id="emp-co-supervisor"
-                  value={form.coSupervisor}
-                  onChange={(v) => setForm({ ...form, coSupervisor: v })}
-                  employees={employees}
-                />
-              </div>
-              <div>
-                <Label htmlFor="emp-email" className="text-xs text-muted-foreground">Email</Label>
-                <Input id="emp-email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="mt-1.5" />
-              </div>
-              <div>
-                <Label htmlFor="emp-phone" className="text-xs text-muted-foreground">Phone</Label>
-                <Input id="emp-phone" type="tel" placeholder="+1 (555) 123-4567" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="mt-1.5" />
-              </div>
-              <div>
-                <Label htmlFor="emp-joining-date" className="text-xs text-muted-foreground">Joining Date</Label>
-                <Input id="emp-joining-date" type="date" value={form.joining_date} onChange={(e) => setForm({ ...form, joining_date: e.target.value })} className="mt-1.5" />
-              </div>
-              <div>
-                <Label htmlFor="emp-role-start" className="text-xs text-muted-foreground">Role Start Date</Label>
-                <Input id="emp-role-start" type="date" value={form.role_start_date} onChange={(e) => setForm({ ...form, role_start_date: e.target.value })} className="mt-1.5" />
-              </div>
-              <div>
-                <Label htmlFor="emp-rating-code" className="text-xs text-muted-foreground">Current Year Rating</Label>
-                <select id="emp-rating-code" value={form.current_year_rating_code} onChange={(e) => setForm({ ...form, current_year_rating_code: e.target.value as CompetencyRating })} className="mt-1.5 w-full px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary">
-                  <option value="E">E — Excellent</option>
-                  <option value="G">G — Good</option>
-                  <option value="M">M — Meets</option>
-                  <option value="NI">NI — Needs Improvement</option>
-                </select>
-              </div>
-              <div>
-                <Label htmlFor="emp-potential" className="text-xs text-muted-foreground">Potential Rating</Label>
-                <select id="emp-potential" value={form.potential_rating} onChange={(e) => setForm({ ...form, potential_rating: e.target.value as PotentialRating })} className="mt-1.5 w-full px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary">
-                  {potentials.map((p) => <option key={p} value={p}>{p}</option>)}
-                </select>
+                <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">Current year performance (optional)</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="emp-rating-code" className="text-xs text-muted-foreground">Performance Rating</Label>
+                    <select id="emp-rating-code" value={form.current_year_rating_code} onChange={(e) => setForm({ ...form, current_year_rating_code: e.target.value as CompetencyRating })} className="mt-1.5 w-full px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+                      <option value="E">E — Excellent (exceeded)</option>
+                      <option value="G">G — Good</option>
+                      <option value="M">M — Meets expectations</option>
+                      <option value="NI">NI — Needs improvement</option>
+                    </select>
+                  </div>
+                  <div>
+                    <Label htmlFor="emp-potential" className="text-xs text-muted-foreground">Potential Rating</Label>
+                    <select id="emp-potential" value={form.potential_rating} onChange={(e) => setForm({ ...form, potential_rating: e.target.value as PotentialRating })} className="mt-1.5 w-full px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+                      <option value="Well Placed">Well Placed — right role for them</option>
+                      <option value="Ready Now">Ready Now — promote this year</option>
+                      <option value="Ready Soon">Ready Soon — 12-24 months</option>
+                      <option value="Ready Later">Ready Later — 2+ years</option>
+                    </select>
+                  </div>
+                </div>
               </div>
             </div>
             <DialogFooter>
