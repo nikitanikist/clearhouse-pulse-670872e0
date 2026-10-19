@@ -18,6 +18,7 @@ const SKILL_AREAS: InterpersonalArea[] = [
   "Dependability During Peak Seasons",
   "Support for Team Members",
   "Contributions to Firm Culture",
+  "Business Development",
 ];
 
 const InterpersonalSkills = ({ employeeId }: { employeeId: string }) => {

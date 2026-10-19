@@ -45,7 +45,7 @@ interface EmployeeDirectoryProps {
 }
 
 const locations: Location[] = ["Canada", "India"];
-const potentials: PotentialRating[] = ["Well Placed", "Ready Now", "Ready Soon", "Ready Later"];
+const potentials: PotentialRating[] = ["Well Placed", "Ready Now", "Ready Soon"];
 
 const deriveRating = (score: number | null): CompetencyRating | null => {
   if (score === null) return null;
@@ -651,7 +651,6 @@ const EmployeeDirectory = ({ employees, onSelectEmployee, initialFilters }: Empl
                       <option value="Well Placed">Well Placed — right role for them</option>
                       <option value="Ready Now">Ready Now — promote this year</option>
                       <option value="Ready Soon">Ready Soon — 12-24 months</option>
-                      <option value="Ready Later">Ready Later — 2+ years</option>
                     </select>
                   </div>
                 </div>

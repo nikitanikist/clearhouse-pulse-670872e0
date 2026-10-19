@@ -12,7 +12,6 @@ const potentialOptions: { value: PotentialRating; desc: string }[] = [
   { value: "Well Placed", desc: "Right role for now" },
   { value: "Ready Now", desc: "Ready immediately" },
   { value: "Ready Soon", desc: "12-24 months" },
-  { value: "Ready Later", desc: "2+ years" },
 ];
 
 const GrowthPotential = ({ employeeId }: { employeeId: string }) => {

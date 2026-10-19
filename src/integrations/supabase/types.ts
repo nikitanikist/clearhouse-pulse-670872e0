@@ -287,6 +287,44 @@ export type Database = {
         }
         Relationships: []
       }
+      growth_impact_entries: {
+        Row: {
+          category: Database["public"]["Enums"]["growth_impact_category"]
+          created_at: string
+          employee_id: string
+          entry_date: string
+          id: string
+          notes: string
+          updated_at: string
+        }
+        Insert: {
+          category: Database["public"]["Enums"]["growth_impact_category"]
+          created_at?: string
+          employee_id: string
+          entry_date: string
+          id?: string
+          notes?: string
+          updated_at?: string
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["growth_impact_category"]
+          created_at?: string
+          employee_id?: string
+          entry_date?: string
+          id?: string
+          notes?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "growth_impact_entries_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       management_notes: {
         Row: {
           comment_by: string
@@ -449,6 +487,12 @@ export type Database = {
         | "Dependability During Peak Seasons"
         | "Support for Team Members"
         | "Contributions to Firm Culture"
+        | "Business Development"
+      growth_impact_category:
+        | "My Impact"
+        | "My Growth"
+        | "Feedback and Recognition"
+        | "What's Next"
       potential_rating:
         | "Well Placed"
         | "Ready Now"
@@ -603,6 +647,13 @@ export const Constants = {
         "Dependability During Peak Seasons",
         "Support for Team Members",
         "Contributions to Firm Culture",
+        "Business Development",
+      ],
+      growth_impact_category: [
+        "My Impact",
+        "My Growth",
+        "Feedback and Recognition",
+        "What's Next",
       ],
       potential_rating: [
         "Well Placed",

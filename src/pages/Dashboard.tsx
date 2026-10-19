@@ -9,6 +9,7 @@ import EmployeeProfile from "@/components/portal/tabs/EmployeeProfile";
 import Overview from "@/components/portal/tabs/Overview";
 import InterpersonalSkills from "@/components/portal/tabs/InterpersonalSkills";
 import GrowthPotential from "@/components/portal/tabs/GrowthPotential";
+import GrowthImpact from "@/components/portal/tabs/GrowthImpact";
 import ManagementNotes from "@/components/portal/tabs/ManagementNotes";
 import { type Employee, type SecurityLevel } from "@/data/employees";
 import { ArrowLeft } from "lucide-react";
@@ -23,6 +24,7 @@ const tabs = [
   { label: "Overview" },
   { label: "Interpersonal Skills & Firm Fit" },
   { label: "Growth & Potential" },
+  { label: "Growth & Impact" },
   { label: "Management Notes" },
 ];
 
@@ -97,7 +99,8 @@ const Dashboard = () => {
       case 1: return <Overview employee={selected} />;
       case 2: return <InterpersonalSkills employeeId={selected.id} />;
       case 3: return <GrowthPotential employeeId={selected.id} />;
-      case 4: return <ManagementNotes employeeId={selected.id} authorName={profile?.full_name ?? "Manager"} />;
+      case 4: return <GrowthImpact employeeId={selected.id} />;
+      case 5: return <ManagementNotes employeeId={selected.id} authorName={profile?.full_name ?? "Manager"} />;
       default: return null;
     }
   };

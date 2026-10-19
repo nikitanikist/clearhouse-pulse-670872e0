@@ -482,7 +482,7 @@ const Overview = ({ employee, readOnly = false }: OverviewProps) => {
         isOpen={openSection === "bff"}
         onToggle={() => toggle("bff")}
       >
-        <TextArea label="BFF Summary" value={row.bff_summary} />
+        <TextArea label="BBF Summary" value={row.bff_summary} />
       </Section>
 
       <Section

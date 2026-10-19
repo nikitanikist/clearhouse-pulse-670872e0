@@ -27,7 +27,8 @@ export type InterpersonalArea =
   | "Commitment to Firm Values"
   | "Dependability During Peak Seasons"
   | "Support for Team Members"
-  | "Contributions to Firm Culture";
+  | "Contributions to Firm Culture"
+  | "Business Development";
 
 export interface ProfileRow {
   user_id: string;
@@ -113,6 +114,22 @@ export interface PdrDocumentRow {
   uploaded_at: string;
 }
 
+export type GrowthImpactCategory =
+  | "My Impact"
+  | "My Growth"
+  | "Feedback and Recognition"
+  | "What's Next";
+
+export interface GrowthImpactEntryRow {
+  id: string;
+  employee_id: string;
+  entry_date: string;
+  category: GrowthImpactCategory;
+  notes: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -123,6 +140,7 @@ export interface Database {
       employee_interpersonal: { Row: InterpersonalRow; Insert: Partial<InterpersonalRow>; Update: Partial<InterpersonalRow> };
       management_notes: { Row: ManagementNoteRow; Insert: Partial<ManagementNoteRow>; Update: Partial<ManagementNoteRow> };
       pdr_documents: { Row: PdrDocumentRow; Insert: Partial<PdrDocumentRow>; Update: Partial<PdrDocumentRow> };
+      growth_impact_entries: { Row: GrowthImpactEntryRow; Insert: Partial<GrowthImpactEntryRow>; Update: Partial<GrowthImpactEntryRow> };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
@@ -134,6 +152,7 @@ export interface Database {
       potential_rating: PotentialRating;
       core_competency: CoreCompetencyName;
       interpersonal_area: InterpersonalArea;
+      growth_impact_category: GrowthImpactCategory;
     };
   };
 }

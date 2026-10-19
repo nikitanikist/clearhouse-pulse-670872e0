@@ -6,22 +6,20 @@ import { useEmployees } from "@/hooks/useEmployees";
 import ProfileHeader from "@/components/portal/ProfileHeader";
 import EmployeeProfile from "@/components/portal/tabs/EmployeeProfile";
 import Overview from "@/components/portal/tabs/Overview";
-import InterpersonalSkills from "@/components/portal/tabs/InterpersonalSkills";
-import GrowthPotential from "@/components/portal/tabs/GrowthPotential";
-import ManagementNotes from "@/components/portal/tabs/ManagementNotes";
+import GrowthImpact from "@/components/portal/tabs/GrowthImpact";
 import ChangePasswordDialog from "@/components/portal/ChangePasswordDialog";
 
+// Employees see Profile + Overview + their own Growth & Impact journal.
+// Interpersonal / Growth & Potential / Manager Notes stay manager-only.
 const tabs = [
   "Profile",
   "Overview",
-  "Interpersonal Skills & Firm Fit",
-  "Growth & Potential",
-  "Management Notes",
+  "Growth & Impact",
 ];
 
 const MyRecord = () => {
   const navigate = useNavigate();
-  const { user, profile, signOut } = useAuth();
+  const { user, signOut } = useAuth();
   const { data: employees = [], isLoading, error } = useEmployees();
   const [activeTab, setActiveTab] = useState(0);
   const [passwordOpen, setPasswordOpen] = useState(false);
@@ -47,16 +45,7 @@ const MyRecord = () => {
       case 1:
         return <Overview employee={employee} readOnly />;
       case 2:
-        return <InterpersonalSkills employeeId={employee.id} />;
-      case 3:
-        return <GrowthPotential employeeId={employee.id} />;
-      case 4:
-        return (
-          <ManagementNotes
-            employeeId={employee.id}
-            authorName={profile?.full_name ?? "Manager"}
-          />
-        );
+        return <GrowthImpact employeeId={employee.id} />;
       default:
         return null;
     }

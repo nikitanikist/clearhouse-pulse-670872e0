@@ -4,6 +4,7 @@ import type {
   CoreCompetencyRow,
   DevPlanRow,
   EmployeeRow,
+  GrowthImpactEntryRow,
   InterpersonalRow,
   ManagementNoteRow,
   PdrDocumentRow,
@@ -173,5 +174,38 @@ export const usePdrDocuments = (id: string | undefined) =>
         .order("uploaded_at", { ascending: false });
       if (error) throw error;
       return data ?? [];
+    },
+  });
+
+export const useGrowthImpactEntries = (id: string | undefined) =>
+  useQuery({
+    queryKey: ["employee", id, "growth-impact"],
+    enabled: !!id,
+    queryFn: async (): Promise<GrowthImpactEntryRow[]> => {
+      const { data, error } = await supabase
+        .from("growth_impact_entries")
+        .select("*")
+        .eq("employee_id", id!)
+        .order("entry_date", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as GrowthImpactEntryRow[];
+    },
+  });
+
+/** Returns the signed-in user's own employee id (via email match), or null. */
+export const useMyEmployeeId = () =>
+  useQuery({
+    queryKey: ["my-employee-id"],
+    queryFn: async (): Promise<string | null> => {
+      const { data: userData } = await supabase.auth.getUser();
+      const email = userData?.user?.email?.toLowerCase();
+      if (!email) return null;
+      const { data } = await supabase
+        .from("employees")
+        .select("id")
+        .ilike("email", email)
+        .limit(1)
+        .maybeSingle();
+      return (data as { id?: string } | null)?.id ?? null;
     },
   });
