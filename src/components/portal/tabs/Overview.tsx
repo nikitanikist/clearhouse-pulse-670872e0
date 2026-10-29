@@ -529,6 +529,16 @@ const Overview = ({ employee, readOnly = false }: OverviewProps) => {
         </div>
       </Section>
 
+      {/*
+        Legacy PDR Word-doc uploader. The in-portal PDR cycle editor
+        (see the dedicated PDR tab) replaces this flow in Phase 9A/9B,
+        and archiving a cycle now publishes its summary directly to this
+        Overview tab. We keep the uploader + pdr_documents table around
+        so historical uploads remain accessible, but the section is
+        hidden by default to avoid confusing two parallel UIs. Flip the
+        `false &&` below to `true &&` if you need the uploader back.
+      */}
+      {false && (
       <Section
         title="PDRs (Performance Development Reviews)"
         subtitle={`${pdrs.length} document${pdrs.length === 1 ? "" : "s"}`}
@@ -592,6 +602,7 @@ const Overview = ({ employee, readOnly = false }: OverviewProps) => {
           </table>
         </div>
       </Section>
+      )}
 
       <PdrReviewDialog employeeId={employee.id} parsed={parsed} onClose={() => setParsed(null)} />
 

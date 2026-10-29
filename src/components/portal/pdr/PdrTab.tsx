@@ -6,6 +6,8 @@ import {
   usePdrCycles,
   useCreatePdrCycle,
   useSetPdrStatus,
+  usePdrSchedule,
+  useArchiveAndProject,
 } from "@/hooks/usePdrCycles";
 import { useCanDo } from "@/hooks/useCanDo";
 import { useMyEmployeeId } from "@/hooks/useEmployees";
@@ -23,10 +25,12 @@ const yearNow = () => new Date().getFullYear();
 
 const PdrTab = ({ employee, revieweeView = false }: Props) => {
   const { data: cycles = [], isLoading } = usePdrCycles(employee.id);
+  const { data: schedule = [] } = usePdrSchedule();
   const matrix = useCanDo();
   const { data: myId } = useMyEmployeeId();
   const createCycle = useCreatePdrCycle();
   const setStatus = useSetPdrStatus();
+  const archiveAndProject = useArchiveAndProject();
 
   const canLock    = matrix.isAdmin || matrix.can("action:pdr_lock",    "view");
   const canArchive = matrix.isAdmin || matrix.can("action:pdr_archive", "view");
@@ -79,10 +83,8 @@ const PdrTab = ({ employee, revieweeView = false }: Props) => {
     }
   };
 
-  const changeStatus = async (row: PdrCycleRow, nextStatus: "open" | "shutdown" | "archived") => {
-    const confirmMsg = nextStatus === "archived"
-      ? "Archive this cycle? Once archived it becomes read-only."
-      : nextStatus === "shutdown"
+  const changeStatus = async (row: PdrCycleRow, nextStatus: "open" | "shutdown") => {
+    const confirmMsg = nextStatus === "shutdown"
       ? "Start shutdown? The employee will not be able to view this PDR until shutdown ends."
       : "End shutdown and reopen for the employee?";
     if (!confirm(confirmMsg)) return;
@@ -94,14 +96,52 @@ const PdrTab = ({ employee, revieweeView = false }: Props) => {
     }
   };
 
-  // During shutdown, employees viewing their own PDR get a block message
-  if (revieweeView && isSelf && displayCycle?.status === "shutdown") {
+  const archive = async (row: PdrCycleRow) => {
+    const ok = confirm(
+      "Archive this cycle?\n\n" +
+      "This will:\n" +
+      "  1. Copy the PDR summary into the employee's Overview tab\n" +
+      "    (overwriting any current Overview text)\n" +
+      "  2. Lock this cycle as read-only forever\n\n" +
+      "Continue?",
+    );
+    if (!ok) return;
+    try {
+      await archiveAndProject({ cycle: row });
+      toast.success("Archived and projected to Overview");
+    } catch (e) {
+      toast.error(`Could not archive: ${(e as Error).message}`);
+    }
+  };
+
+  // Auto-shutdown based on scheduled dates. Employee is auto-blocked when
+  // today falls between schedule.shutdown_start and shutdown_end for the
+  // displayed cycle's (year, half) -- even if cycle.status is still 'open'.
+  // Managers always see the form.
+  const scheduledWindow = displayCycle
+    ? schedule.find((s) => s.year === displayCycle.year && s.half === displayCycle.half)
+    : null;
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const inScheduledShutdown = !!scheduledWindow
+    && !!scheduledWindow.shutdown_start && !!scheduledWindow.shutdown_end
+    && todayIso >= scheduledWindow.shutdown_start
+    && todayIso <= scheduledWindow.shutdown_end;
+
+  // Block message for employees during shutdown (manual or scheduled)
+  if (revieweeView && isSelf && displayCycle
+      && (displayCycle.status === "shutdown" || inScheduledShutdown)) {
+    const until = scheduledWindow?.shutdown_end
+      ? new Date(scheduledWindow.shutdown_end).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })
+      : null;
     return (
       <div className="rounded-lg border border-warning/30 bg-warning/10 p-6">
         <h3 className="font-heading font-bold text-foreground mb-1">PDR temporarily unavailable</h3>
         <p className="text-sm text-muted-foreground">
-          Your {HALF_LABEL[displayCycle.half]} {displayCycle.year} PDR is currently with your manager.
-          It will become available again after your 1:1 meeting.
+          Your {HALF_LABEL[displayCycle.half]} {displayCycle.year} PDR is currently
+          with your manager.
+          {until
+            ? ` It will become available again after ${until}.`
+            : " It will become available again after your 1:1 meeting."}
         </p>
       </div>
     );
@@ -165,10 +205,11 @@ const PdrTab = ({ employee, revieweeView = false }: Props) => {
             )}
             {displayCycle.status !== "archived" && canArchive && (
               <button
-                onClick={() => changeStatus(displayCycle, "archived")}
+                onClick={() => archive(displayCycle)}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border bg-card text-xs font-semibold hover:bg-muted/50"
+                title="Lock as read-only AND copy summary into Employee Profile → Overview"
               >
-                <Archive className="h-3.5 w-3.5" /> Archive cycle
+                <Archive className="h-3.5 w-3.5" /> Archive &amp; publish to Overview
               </button>
             )}
           </div>

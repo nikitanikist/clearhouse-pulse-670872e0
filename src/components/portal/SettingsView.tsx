@@ -7,6 +7,7 @@ import { DepartmentsCard, PositionsCard } from "@/components/portal/settings/Loo
 import DataImport from "@/components/portal/settings/DataImport";
 import AccessRulesCard from "@/components/portal/settings/AccessRulesCard";
 import PermissionsMatrixCard from "@/components/portal/settings/PermissionsMatrixCard";
+import PdrShutdownScheduleCard from "@/components/portal/settings/PdrShutdownScheduleCard";
 import ChangePasswordDialog from "@/components/portal/ChangePasswordDialog";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useCanManageAccessRules } from "@/hooks/useAccessRules";
@@ -793,6 +794,8 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
       )}
 
       {canManagePermissions && <PermissionsMatrixCard />}
+
+      {(matrix.isAdmin || matrix.can("action:pdr_lock", "view")) && <PdrShutdownScheduleCard />}
 
       {canImportData && permissions.can_import_data && <DataImport />}
 

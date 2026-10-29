@@ -133,3 +133,87 @@ export const useUpsertPdrSchedule = () => {
     await qc.invalidateQueries({ queryKey: ["pdr-schedule"] });
   };
 };
+
+export const useDeletePdrSchedule = () => {
+  const qc = useQueryClient();
+  return async (args: { year: number; half: PdrCycleHalf }) => {
+    const { error } = await supabase
+      .from("pdr_cycle_schedule")
+      .delete()
+      .eq("year", args.year)
+      .eq("half", args.half);
+    if (error) throw error;
+    await qc.invalidateQueries({ queryKey: ["pdr-schedule"] });
+  };
+};
+
+/**
+ * One-click archive: writes a summary snapshot into the employees row, then
+ * sets the cycle status to 'archived'. The order matters -- if the employee
+ * update fails we abort before locking the cycle. The projected text ends up
+ * in the Employee Profile -> Overview section automatically.
+ */
+export const useArchiveAndProject = () => {
+  const qc = useQueryClient();
+  return async (args: { cycle: PdrCycleRow }) => {
+    const { cycle } = args;
+    const c = mergeContent(cycle.content);
+
+    const join = (parts: Array<string | null | undefined>) =>
+      parts.map((p) => (p ?? "").trim()).filter(Boolean).join("\n\n");
+
+    const bbfSummary = join([
+      c.bbf.future && `Future I want to create:\n${c.bbf.future}`,
+      c.bbf.goals && `Bold goals and dreams:\n${c.bbf.goals}`,
+      c.bbf.firm_support && `How the firm can support me:\n${c.bbf.firm_support}`,
+    ]);
+
+    const performanceSummary = join([
+      c.summary.reviewee_commentary && `Reviewee: ${c.summary.reviewee_commentary}`,
+      c.summary.reviewer_commentary && `Reviewer: ${c.summary.reviewer_commentary}`,
+      c.other_considerations && `Other considerations: ${c.other_considerations}`,
+    ]);
+
+    const devPlanSummary = c.dev_plan
+      .map((row, i) =>
+        [
+          `${i + 1}. ${row.objective || "(no objective)"}`,
+          row.activities && `   Activities: ${row.activities}`,
+          row.support && `   Support: ${row.support}`,
+          row.target_date && `   Target: ${row.target_date}`,
+        ]
+          .filter(Boolean)
+          .join("\n"),
+      )
+      .join("\n\n");
+
+    const empPatch: Record<string, unknown> = {
+      bff_summary: bbfSummary,
+      performance_what_went_well: c.looking_back.what_went_well ?? "",
+      performance_what_could_go_better: c.looking_back.what_could_be_better ?? "",
+      performance_summary: performanceSummary,
+      career_aspirations_summary: c.looking_forward.career_aspirations ?? "",
+      dev_plan_summary: devPlanSummary,
+      performance_updated_at: new Date().toISOString(),
+    };
+    if (c.reviewer_assessment) {
+      empPatch.current_year_rating_code = c.reviewer_assessment;
+    }
+
+    const { error: empErr } = await supabase
+      .from("employees")
+      .update(empPatch as never)
+      .eq("id", cycle.employee_id);
+    if (empErr) throw empErr;
+
+    const { error: cycErr } = await supabase
+      .from("pdr_cycles")
+      .update({ status: "archived", archived_at: new Date().toISOString() } as never)
+      .eq("id", cycle.id);
+    if (cycErr) throw cycErr;
+
+    await qc.invalidateQueries({ queryKey: ["pdr-cycles", cycle.employee_id] });
+    await qc.invalidateQueries({ queryKey: ["employee", cycle.employee_id] });
+    await qc.invalidateQueries({ queryKey: ["employees"] });
+  };
+};
