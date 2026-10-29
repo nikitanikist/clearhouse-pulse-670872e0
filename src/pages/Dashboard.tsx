@@ -12,6 +12,7 @@ import InterpersonalSkills from "@/components/portal/tabs/InterpersonalSkills";
 import GrowthPotential from "@/components/portal/tabs/GrowthPotential";
 import GrowthImpact from "@/components/portal/tabs/GrowthImpact";
 import ManagementNotes from "@/components/portal/tabs/ManagementNotes";
+import PdrTab from "@/components/portal/pdr/PdrTab";
 import { type Employee, type SecurityLevel } from "@/data/employees";
 import { ArrowLeft } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -23,7 +24,7 @@ import ReportsView from "@/components/portal/ReportsView";
 
 type TabKey =
   | "profile" | "overview" | "interpersonal"
-  | "growth_potential" | "growth_impact" | "manager_notes";
+  | "growth_potential" | "growth_impact" | "pdr" | "manager_notes";
 
 const ALL_TABS: { key: TabKey; label: string; resource: string }[] = [
   { key: "profile",          label: "Employee Profile",             resource: "tab:profile" },
@@ -31,6 +32,7 @@ const ALL_TABS: { key: TabKey; label: string; resource: string }[] = [
   { key: "interpersonal",    label: "Interpersonal Skills & Firm Fit", resource: "tab:interpersonal" },
   { key: "growth_potential", label: "Growth & Potential",           resource: "tab:growth_potential" },
   { key: "growth_impact",    label: "Growth & Impact",              resource: "tab:growth_impact" },
+  { key: "pdr",              label: "PDR",                          resource: "tab:pdr" },
   { key: "manager_notes",    label: "Management Notes",             resource: "tab:manager_notes" },
 ];
 
@@ -114,6 +116,7 @@ const Dashboard = () => {
       case "interpersonal":    return <InterpersonalSkills employeeId={selected.id} />;
       case "growth_potential": return <GrowthPotential employeeId={selected.id} />;
       case "growth_impact":    return <GrowthImpact employeeId={selected.id} />;
+      case "pdr":              return <PdrTab employee={selected} />;
       case "manager_notes":    return <ManagementNotes employeeId={selected.id} authorName={profile?.full_name ?? "Manager"} />;
       default: return null;
     }

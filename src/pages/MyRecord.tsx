@@ -7,14 +7,16 @@ import ProfileHeader from "@/components/portal/ProfileHeader";
 import EmployeeProfile from "@/components/portal/tabs/EmployeeProfile";
 import Overview from "@/components/portal/tabs/Overview";
 import GrowthImpact from "@/components/portal/tabs/GrowthImpact";
+import PdrTab from "@/components/portal/pdr/PdrTab";
 import ChangePasswordDialog from "@/components/portal/ChangePasswordDialog";
 
-// Employees see Profile + Overview + their own Growth & Impact journal.
+// Employees see Profile + Overview + Growth & Impact + their own PDR.
 // Interpersonal / Growth & Potential / Manager Notes stay manager-only.
 const tabs = [
   "Profile",
   "Overview",
   "Growth & Impact",
+  "PDR",
 ];
 
 const MyRecord = () => {
@@ -46,6 +48,10 @@ const MyRecord = () => {
         return <Overview employee={employee} readOnly />;
       case 2:
         return <GrowthImpact employeeId={employee.id} />;
+      case 3:
+        // Employee view of their own PDR -- hides reviewer-only sections
+        // AND blocks the whole form during shutdown windows.
+        return <PdrTab employee={employee} revieweeView />;
       default:
         return null;
     }
