@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { DepartmentsCard, PositionsCard } from "@/components/portal/settings/LookupManagers";
 import DataImport from "@/components/portal/settings/DataImport";
 import AccessRulesCard from "@/components/portal/settings/AccessRulesCard";
+import PermissionsMatrixCard from "@/components/portal/settings/PermissionsMatrixCard";
 import ChangePasswordDialog from "@/components/portal/ChangePasswordDialog";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useCanManageAccessRules } from "@/hooks/useAccessRules";
@@ -782,6 +783,9 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
           <PositionsCard />
         </>
       )}
+
+      {isAdmin && <PermissionsMatrixCard />}
+
       {isAdmin && permissions.can_import_data && <DataImport />}
 
 
