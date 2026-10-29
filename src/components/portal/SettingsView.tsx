@@ -10,6 +10,7 @@ import PermissionsMatrixCard from "@/components/portal/settings/PermissionsMatri
 import ChangePasswordDialog from "@/components/portal/ChangePasswordDialog";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useCanManageAccessRules } from "@/hooks/useAccessRules";
+import { useCanDo } from "@/hooks/useCanDo";
 import type { Permissions } from "@/lib/permissions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -95,6 +96,13 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
   const permissions = usePermissions();
   const isAdmin = securityLevel === 1;
   const { data: canManageRules = false } = useCanManageAccessRules();
+  const matrix = useCanDo();
+  // L1 admins always see every card (bypass). Everyone else sees cards only
+  // when their position's matrix row grants the relevant action.
+  const canManageLookups     = isAdmin || matrix.can("action:manage_lookups",     "view");
+  const canManageUsersMatrix = isAdmin || matrix.can("action:manage_users",       "view");
+  const canManagePermissions = isAdmin || matrix.can("action:manage_permissions", "view");
+  const canImportData        = isAdmin || matrix.can("action:import_data",        "view");
   const [pending, setPending] = useState<PendingChange | null>(null);
   const [applying, setApplying] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -777,16 +785,16 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
           Card hidden from UI but code and data preserved in the DB. */}
       {false && (isAdmin || canManageRules) && <AccessRulesCard />}
 
-      {isAdmin && permissions.can_manage_lookups && (
+      {canManageLookups && permissions.can_manage_lookups && (
         <>
           <DepartmentsCard />
           <PositionsCard />
         </>
       )}
 
-      {isAdmin && <PermissionsMatrixCard />}
+      {canManagePermissions && <PermissionsMatrixCard />}
 
-      {isAdmin && permissions.can_import_data && <DataImport />}
+      {canImportData && permissions.can_import_data && <DataImport />}
 
 
       <AlertDialog open={!!pending} onOpenChange={(o) => !o && !applying && setPending(null)}>

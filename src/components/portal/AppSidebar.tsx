@@ -1,5 +1,6 @@
 import { LayoutDashboard, Users, Building2, BarChart3, Settings, LogOut } from "lucide-react";
 import type { SecurityLevel } from "@/data/employees";
+import { useCanDo } from "@/hooks/useCanDo";
 
 export type NavSection = "dashboard" | "employees" | "teams" | "reports" | "settings";
 
@@ -20,15 +21,17 @@ interface AppSidebarProps {
   onSignOut: () => void;
 }
 
-const navItems: { id: NavSection; label: string; icon: React.ElementType }[] = [
-  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { id: "employees", label: "Employees", icon: Users },
-  { id: "teams", label: "Teams", icon: Building2 },
-  { id: "reports", label: "Reports", icon: BarChart3 },
-  { id: "settings", label: "Settings", icon: Settings },
+const navItems: { id: NavSection; label: string; icon: React.ElementType; resource: string }[] = [
+  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, resource: "nav:dashboard" },
+  { id: "employees", label: "Employees", icon: Users,           resource: "nav:employees" },
+  { id: "teams",     label: "Teams",     icon: Building2,       resource: "nav:teams" },
+  { id: "reports",   label: "Reports",   icon: BarChart3,       resource: "nav:reports" },
+  { id: "settings",  label: "Settings",  icon: Settings,        resource: "nav:settings" },
 ];
 
 const AppSidebar = ({ activeSection, onNavigate, securityLevel, userEmail, onSignOut }: AppSidebarProps) => {
+  const { can, isLoading } = useCanDo();
+  const visibleNav = navItems.filter((n) => isLoading || can(n.resource, "view"));
   return (
     <aside className="w-[220px] min-w-[220px] bg-sidebar flex flex-col h-screen sticky top-0" aria-label="Primary">
       {/* Brand (intentionally not an h1 — page titles own h1) */}
@@ -44,7 +47,7 @@ const AppSidebar = ({ activeSection, onNavigate, securityLevel, userEmail, onSig
 
       {/* Nav */}
       <nav className="flex-1 px-3 space-y-1">
-        {navItems.map((item) => {
+        {visibleNav.map((item) => {
           const active = activeSection === item.id;
           return (
             <button

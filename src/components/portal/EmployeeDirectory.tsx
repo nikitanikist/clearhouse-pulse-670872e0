@@ -1,6 +1,8 @@
 import { useState, useMemo, useEffect } from "react";
 import { Search, Filter, Plus, Loader2, X, MoreHorizontal, ChevronLeft, ChevronRight } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useCanDo } from "@/hooks/useCanDo";
+import { useAuth } from "@/contexts/AuthContext";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
@@ -125,8 +127,51 @@ const EmployeeDirectory = ({ employees, onSelectEmployee, initialFilters }: Empl
     [employees]
   );
 
+  // Matrix-driven scope filter for nav:employees. RLS already prevents the
+  // client from seeing anyone it shouldn't; this narrows further for positions
+  // whose matrix row says 'own_department' / 'own_team' / 'self'.
+  const matrix = useCanDo();
+  const scope = matrix.scope("nav:employees");
+  const { user } = useAuth();
+  const myEmail = user?.email?.toLowerCase() ?? null;
+  const me = useMemo(
+    () => (myEmail ? employees.find((e) => e.email.toLowerCase() === myEmail) : null) ?? null,
+    [employees, myEmail],
+  );
+  // Descendants-of-me in the supervisor + co-supervisor chain, computed client
+  // side so 'own_team' scope works for whoever is signed in. BFS from me down.
+  const myDescendants = useMemo(() => {
+    const out = new Set<string>();
+    if (!me) return out;
+    out.add(me.name);
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (const e of employees) {
+        if (out.has(e.name)) continue;
+        if (out.has(e.supervisor) || (e.coSupervisor && out.has(e.coSupervisor))) {
+          out.add(e.name);
+          changed = true;
+        }
+      }
+    }
+    return out;
+  }, [employees, me]);
+
   const filtered = useMemo(() => {
     return employees.filter((e) => {
+      // Scope gate (admin bypasses)
+      let matchesScope = true;
+      if (!matrix.isLoading && !matrix.isAdmin) {
+        switch (scope) {
+          case "all": matchesScope = true; break;
+          case "own_department": matchesScope = !!me && e.department === me.department; break;
+          case "own_team": matchesScope = myDescendants.has(e.name); break;
+          case "self": matchesScope = !!me && e.email.toLowerCase() === me.email.toLowerCase(); break;
+        }
+      }
+      if (!matchesScope) return false;
+
       const matchesActive = showInactive || e.isActive !== false;
       const q = search.toLowerCase();
       const matchesSearch = e.name.toLowerCase().includes(q) ||
@@ -144,7 +189,7 @@ const EmployeeDirectory = ({ employees, onSelectEmployee, initialFilters }: Empl
       const matchesSupervisor = !supervisorFilter || e.supervisor === supervisorFilter;
       return matchesActive && matchesSearch && matchesDept && matchesLoc && matchesPos && matchesPot && matchesRating && matchesSupervisor;
     });
-  }, [employees, search, deptFilter, locFilter, posFilter, potFilter, potMulti, ratingFilter, supervisorFilter, showInactive]);
+  }, [employees, search, deptFilter, locFilter, posFilter, potFilter, potMulti, ratingFilter, supervisorFilter, showInactive, scope, me, myDescendants, matrix.isAdmin, matrix.isLoading]);
 
   const clearFilters = () => {
     setDeptFilter("");
@@ -279,7 +324,7 @@ const EmployeeDirectory = ({ employees, onSelectEmployee, initialFilters }: Empl
               {filtered.length} {filtered.length === 1 ? "person" : "people"}
             </Badge>
           </div>
-          {permissions.can_add_employee && (
+          {permissions.can_add_employee && (matrix.isAdmin || matrix.can("action:add_employee", "view")) && (
             <button
               onClick={() => setAddOpen(true)}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors"

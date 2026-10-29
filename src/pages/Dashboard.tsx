@@ -15,17 +15,22 @@ import { type Employee, type SecurityLevel } from "@/data/employees";
 import { ArrowLeft } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCurrentUserScope, useEmployees } from "@/hooks/useEmployees";
+import { useCanDo } from "@/hooks/useCanDo";
 import SettingsView from "@/components/portal/SettingsView";
 import ReportsView from "@/components/portal/ReportsView";
 
 
-const tabs = [
-  { label: "Employee Profile" },
-  { label: "Overview" },
-  { label: "Interpersonal Skills & Firm Fit" },
-  { label: "Growth & Potential" },
-  { label: "Growth & Impact" },
-  { label: "Management Notes" },
+type TabKey =
+  | "profile" | "overview" | "interpersonal"
+  | "growth_potential" | "growth_impact" | "manager_notes";
+
+const ALL_TABS: { key: TabKey; label: string; resource: string }[] = [
+  { key: "profile",          label: "Employee Profile",             resource: "tab:profile" },
+  { key: "overview",         label: "Overview",                     resource: "tab:overview" },
+  { key: "interpersonal",    label: "Interpersonal Skills & Firm Fit", resource: "tab:interpersonal" },
+  { key: "growth_potential", label: "Growth & Potential",           resource: "tab:growth_potential" },
+  { key: "growth_impact",    label: "Growth & Impact",              resource: "tab:growth_impact" },
+  { key: "manager_notes",    label: "Management Notes",             resource: "tab:manager_notes" },
 ];
 
 const Dashboard = () => {
@@ -52,11 +57,15 @@ const Dashboard = () => {
 
 
   const { data: employees = [], isLoading, error } = useEmployees();
+  const matrix = useCanDo();
+
+  // Only tabs the signed-in user's position is allowed to view.
+  const visibleTabs = ALL_TABS.filter((t) => matrix.isLoading || matrix.can(t.resource, "view"));
 
   const [section, setSection] = useState<NavSection>("dashboard");
   const [employeeView, setEmployeeView] = useState<"list" | "detail">("list");
   const [selected, setSelected] = useState<Employee | null>(null);
-  const [activeTab, setActiveTab] = useState(0);
+  const [activeTab, setActiveTab] = useState<TabKey>("profile");
   const [pendingFilters, setPendingFilters] = useState<{ department?: string; potential?: string | string[] } | null>(null);
 
   const handleNavigateToSection = (
@@ -74,7 +83,8 @@ const Dashboard = () => {
 
   const handleSelectEmployee = (emp: Employee) => {
     setSelected(emp);
-    setActiveTab(0);
+    // Reset to the first visible tab for this user (profile is almost always visible)
+    setActiveTab(visibleTabs[0]?.key ?? "profile");
     setEmployeeView("detail");
   };
 
@@ -82,7 +92,7 @@ const Dashboard = () => {
 
   const handleNavigateToEmployee = (emp: Employee) => {
     setSelected(emp);
-    setActiveTab(0);
+    setActiveTab(visibleTabs[0]?.key ?? "profile");
     setSection("employees");
     setEmployeeView("detail");
   };
@@ -94,13 +104,16 @@ const Dashboard = () => {
 
   const renderTab = () => {
     if (!selected) return null;
+    // Belt-and-braces: if the active tab has become hidden (e.g. admin just
+    // revoked it), render nothing instead of a stale panel.
+    if (!visibleTabs.some((t) => t.key === activeTab)) return null;
     switch (activeTab) {
-      case 0: return <EmployeeProfile employee={selected} />;
-      case 1: return <Overview employee={selected} />;
-      case 2: return <InterpersonalSkills employeeId={selected.id} />;
-      case 3: return <GrowthPotential employeeId={selected.id} />;
-      case 4: return <GrowthImpact employeeId={selected.id} />;
-      case 5: return <ManagementNotes employeeId={selected.id} authorName={profile?.full_name ?? "Manager"} />;
+      case "profile":          return <EmployeeProfile employee={selected} />;
+      case "overview":         return <Overview employee={selected} />;
+      case "interpersonal":    return <InterpersonalSkills employeeId={selected.id} />;
+      case "growth_potential": return <GrowthPotential employeeId={selected.id} />;
+      case "growth_impact":    return <GrowthImpact employeeId={selected.id} />;
+      case "manager_notes":    return <ManagementNotes employeeId={selected.id} authorName={profile?.full_name ?? "Manager"} />;
       default: return null;
     }
   };
@@ -170,14 +183,14 @@ const Dashboard = () => {
                 </div>
                 <ProfileHeader employee={selected} />
                 <div className="bg-card border-b border-border px-6 flex gap-0 overflow-x-auto" role="tablist">
-                  {tabs.map((tab, i) => (
+                  {visibleTabs.map((tab) => (
                     <button
-                      key={tab.label}
+                      key={tab.key}
                       role="tab"
-                      aria-selected={i === activeTab}
-                      onClick={() => setActiveTab(i)}
+                      aria-selected={tab.key === activeTab}
+                      onClick={() => setActiveTab(tab.key)}
                       className={`px-4 py-3 text-sm font-medium whitespace-nowrap transition-all duration-200 border-b-2 ${
-                        i === activeTab
+                        tab.key === activeTab
                           ? "border-b-primary text-primary"
                           : "border-b-transparent text-muted-foreground hover:text-foreground"
                       }`}
