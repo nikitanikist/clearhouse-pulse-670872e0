@@ -4,6 +4,7 @@ import AppSidebar, { type NavSection } from "@/components/portal/AppSidebar";
 import DashboardHome from "@/components/portal/DashboardHome";
 import EmployeeDirectory from "@/components/portal/EmployeeDirectory";
 import TeamsView from "@/components/portal/TeamsView";
+import OrgChartView from "@/components/portal/OrgChartView";
 import ProfileHeader from "@/components/portal/ProfileHeader";
 import EmployeeProfile from "@/components/portal/tabs/EmployeeProfile";
 import Overview from "@/components/portal/tabs/Overview";
@@ -205,6 +206,13 @@ const Dashboard = () => {
 
             {section === "teams" && (
               <TeamsView
+                employees={employees}
+                onSelectEmployee={handleNavigateToEmployee}
+              />
+            )}
+
+            {section === "org_chart" && (
+              <OrgChartView
                 employees={employees}
                 onSelectEmployee={handleNavigateToEmployee}
               />

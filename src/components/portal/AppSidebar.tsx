@@ -1,8 +1,8 @@
-import { LayoutDashboard, Users, Building2, BarChart3, Settings, LogOut } from "lucide-react";
+import { LayoutDashboard, Users, Building2, BarChart3, Settings, LogOut, Network } from "lucide-react";
 import type { SecurityLevel } from "@/data/employees";
 import { useCanDo } from "@/hooks/useCanDo";
 
-export type NavSection = "dashboard" | "employees" | "teams" | "reports" | "settings";
+export type NavSection = "dashboard" | "employees" | "teams" | "org_chart" | "reports" | "settings";
 
 const securityLabels: Record<SecurityLevel, string> = {
   1: "Level 1: Full Access",
@@ -25,6 +25,7 @@ const navItems: { id: NavSection; label: string; icon: React.ElementType; resour
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, resource: "nav:dashboard" },
   { id: "employees", label: "Employees", icon: Users,           resource: "nav:employees" },
   { id: "teams",     label: "Teams",     icon: Building2,       resource: "nav:teams" },
+  { id: "org_chart", label: "Org Chart", icon: Network,         resource: "nav:org_chart" },
   { id: "reports",   label: "Reports",   icon: BarChart3,       resource: "nav:reports" },
   { id: "settings",  label: "Settings",  icon: Settings,        resource: "nav:settings" },
 ];
