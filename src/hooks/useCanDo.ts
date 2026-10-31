@@ -66,16 +66,30 @@ export const useCanDo = (): MatrixAccess => {
       const position =
         (emp as { position?: string } | null)?.position ?? null;
 
-      if (!position) return { securityLevel, byResource: {} };
-
-      const { data: rows } = await supabase
-        .from("position_permissions")
-        .select("*")
-        .eq("position_name", position);
+      // Load this user's overrides in parallel with the position row (if any).
+      const [posRows, overrideRows] = await Promise.all([
+        position
+          ? supabase.from("position_permissions").select("*").eq("position_name", position)
+          : Promise.resolve({ data: [] } as const),
+        supabase.from("user_permission_overrides").select("*").eq("user_id", userId!),
+      ]);
 
       const byResource: Record<string, PositionPermissionRow> = {};
-      for (const r of (rows ?? []) as PositionPermissionRow[]) {
+      // 1. Seed from position defaults
+      for (const r of ((posRows as { data: PositionPermissionRow[] | null }).data ?? [])) {
         byResource[r.resource_key] = r;
+      }
+      // 2. Overlay user overrides -- these take precedence per-cell.
+      for (const o of ((overrideRows as { data: Array<Partial<PositionPermissionRow>> | null }).data ?? [])) {
+        if (!o.resource_key) continue;
+        byResource[o.resource_key] = {
+          position_name: position ?? "",
+          resource_key: o.resource_key,
+          can_view: !!o.can_view,
+          can_edit: !!o.can_edit,
+          scope: (o.scope ?? "self") as PositionPermissionRow["scope"],
+          updated_at: o.updated_at ?? new Date().toISOString(),
+        };
       }
       return { securityLevel, byResource };
     },
