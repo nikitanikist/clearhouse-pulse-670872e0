@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
-import { Loader2, ShieldCheck, Info, ChevronDown, ChevronRight } from "lucide-react";
+import { Loader2, ShieldCheck, Info, ChevronDown, ChevronRight, Users } from "lucide-react";
 import { toast } from "sonner";
-import { Label } from "@/components/ui/label";
 import {
   usePermissionMatrix,
   usePermissionResources,
@@ -11,12 +10,14 @@ import {
   type PermissionResource,
 } from "@/hooks/usePermissionMatrix";
 import { usePositionNames } from "@/hooks/useLookups";
+import EmployeeMultiSelectDialog from "./EmployeeMultiSelectDialog";
 
 const SCOPE_LABELS: Record<PermissionScope, string> = {
   all: "All employees",
   own_department: "Own department",
   own_team: "Own team",
   linked_manager_only: "Only when I'm a linked manager",
+  specific_employees: "Specific employees",
   self: "Only self",
 };
 
@@ -49,6 +50,14 @@ const PermissionsMatrixCard = () => {
   const toggleCategory = (c: string) =>
     setCollapsed((prev) => ({ ...prev, [c]: !prev[c] }));
 
+  // Specific-employees picker state. Keyed by `${position}|${resource}` so one
+  // dialog instance serves every cell.
+  const [picker, setPicker] = useState<null | {
+    position: string;
+    resource: PermissionResource;
+    initial: string[];
+  }>(null);
+
   const isLoading = rLoading || pLoading || posLoading;
 
   const resourcesByCategory = useMemo(() => {
@@ -64,6 +73,7 @@ const PermissionsMatrixCard = () => {
       can_view: false,
       can_edit: false,
       scope: "self",
+      target_employee_ids: [],
       updated_at: new Date().toISOString(),
     };
   };
@@ -71,7 +81,7 @@ const PermissionsMatrixCard = () => {
   const saveCell = async (
     pos: string,
     res: PermissionResource,
-    patch: Partial<Pick<PositionPermissionRow, "can_view" | "can_edit" | "scope">>,
+    patch: Partial<Pick<PositionPermissionRow, "can_view" | "can_edit" | "scope" | "target_employee_ids">>,
   ) => {
     const existing = cellFor(pos, res.key);
     try {
@@ -81,6 +91,7 @@ const PermissionsMatrixCard = () => {
         can_view: patch.can_view ?? existing.can_view,
         can_edit: patch.can_edit ?? existing.can_edit,
         scope: (patch.scope ?? existing.scope) as PermissionScope,
+        target_employee_ids: patch.target_employee_ids ?? existing.target_employee_ids ?? [],
       });
     } catch (e) {
       toast.error(`Could not save: ${(e as Error).message}`);
@@ -115,6 +126,18 @@ const PermissionsMatrixCard = () => {
           configuring permissions.
         </div>
       )}
+
+      <EmployeeMultiSelectDialog
+        open={!!picker}
+        initialIds={picker?.initial ?? []}
+        contextLabel={picker ? `${picker.position} / ${picker.resource.label}` : undefined}
+        onClose={(next) => {
+          if (picker && next !== null) {
+            saveCell(picker.position, picker.resource, { target_employee_ids: next });
+          }
+          setPicker(null);
+        }}
+      />
 
       {!isLoading && positions.length > 0 && (Object.keys(CATEGORY_HEADINGS) as Array<keyof typeof CATEGORY_HEADINGS>).map((category) => {
         const resList = resourcesByCategory[category] ?? [];
@@ -187,19 +210,31 @@ const PermissionsMatrixCard = () => {
                                   />
                                 )}
                                 {res.supports_scope && (
-                                  <select
-                                    value={cell.scope}
-                                    disabled={!cell.can_view}
-                                    onChange={(e) =>
-                                      saveCell(pos, res, { scope: e.target.value as PermissionScope })
-                                    }
-                                    className="mt-1 w-full px-2 py-1 rounded-md border border-input bg-background text-xs focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
-                                    aria-label={`Scope for ${pos} / ${res.label}`}
-                                  >
-                                    {(Object.keys(SCOPE_LABELS) as PermissionScope[]).map((s) => (
-                                      <option key={s} value={s}>{SCOPE_LABELS[s]}</option>
-                                    ))}
-                                  </select>
+                                  <>
+                                    <select
+                                      value={cell.scope}
+                                      disabled={!cell.can_view}
+                                      onChange={(e) =>
+                                        saveCell(pos, res, { scope: e.target.value as PermissionScope })
+                                      }
+                                      className="mt-1 w-full px-2 py-1 rounded-md border border-input bg-background text-xs focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+                                      aria-label={`Scope for ${pos} / ${res.label}`}
+                                    >
+                                      {(Object.keys(SCOPE_LABELS) as PermissionScope[]).map((s) => (
+                                        <option key={s} value={s}>{SCOPE_LABELS[s]}</option>
+                                      ))}
+                                    </select>
+                                    {cell.scope === "specific_employees" && (
+                                      <button
+                                        type="button"
+                                        onClick={() => setPicker({ position: pos, resource: res, initial: cell.target_employee_ids ?? [] })}
+                                        className="mt-1 inline-flex items-center gap-1 px-2 py-1 rounded-md border border-primary/30 bg-primary/5 text-[11px] text-primary hover:bg-primary/10 w-full justify-center"
+                                        title="Choose which employees"
+                                      >
+                                        <Users className="h-3 w-3" /> Pick ({(cell.target_employee_ids ?? []).length})
+                                      </button>
+                                    )}
+                                  </>
                                 )}
                               </div>
                             </td>

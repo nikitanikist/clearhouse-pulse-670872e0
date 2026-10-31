@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { UserCog, Loader2, RotateCcw, Search } from "lucide-react";
+import { UserCog, Loader2, RotateCcw, Search, Users } from "lucide-react";
 import { toast } from "sonner";
 import {
   useAllUsersForOverrides,
@@ -9,12 +9,14 @@ import {
   type EffectiveMatrixCell,
 } from "@/hooks/useUserOverrides";
 import type { PermissionScope } from "@/hooks/usePermissionMatrix";
+import EmployeeMultiSelectDialog from "./EmployeeMultiSelectDialog";
 
 const SCOPE_LABELS: Record<PermissionScope, string> = {
   all: "All employees",
   own_department: "Own department",
   own_team: "Own team",
   linked_manager_only: "Only when I'm a linked manager",
+  specific_employees: "Specific employees",
   self: "Only self",
 };
 
@@ -53,9 +55,12 @@ const UserOverridesCard = () => {
     return by;
   }, [matrix]);
 
+  // "Pick employees" dialog state, used when scope = specific_employees.
+  const [picker, setPicker] = useState<null | { row: EffectiveMatrixCell; initial: string[] }>(null);
+
   const save = async (
     row: EffectiveMatrixCell,
-    patch: Partial<Pick<EffectiveMatrixCell, "can_view" | "can_edit" | "scope">>,
+    patch: Partial<Pick<EffectiveMatrixCell, "can_view" | "can_edit" | "scope" | "target_employee_ids">>,
   ) => {
     if (!selectedUserId) return;
     try {
@@ -65,6 +70,7 @@ const UserOverridesCard = () => {
         can_view: patch.can_view ?? row.can_view,
         can_edit: patch.can_edit ?? row.can_edit,
         scope: (patch.scope ?? row.scope) as PermissionScope,
+        target_employee_ids: patch.target_employee_ids ?? row.target_employee_ids ?? [],
       });
     } catch (e) {
       toast.error(`Could not save override: ${(e as Error).message}`);
@@ -141,6 +147,18 @@ const UserOverridesCard = () => {
         </div>
       )}
 
+      <EmployeeMultiSelectDialog
+        open={!!picker}
+        initialIds={picker?.initial ?? []}
+        contextLabel={picker && selectedUser ? `${selectedUser.full_name} / ${picker.row.resource_label}` : undefined}
+        onClose={(next) => {
+          if (picker && next !== null) {
+            save(picker.row, { target_employee_ids: next });
+          }
+          setPicker(null);
+        }}
+      />
+
       {selectedUser && !mLoading && matrix.length > 0 && (
         <>
           <div className="mb-3 rounded-md border border-border bg-muted/30 p-3 text-xs">
@@ -194,16 +212,29 @@ const UserOverridesCard = () => {
                           <ToggleSw checked={row.can_edit} onChange={(v) => save(row, { can_edit: v })} disabled={!row.can_view} />
                         </td>
                         <td className="py-2 pr-3 text-center">
-                          <select
-                            value={row.scope}
-                            disabled={!row.can_view}
-                            onChange={(e) => save(row, { scope: e.target.value as PermissionScope })}
-                            className="w-full px-2 py-1 rounded-md border border-input bg-background text-xs focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
-                          >
-                            {(Object.keys(SCOPE_LABELS) as PermissionScope[]).map((s) => (
-                              <option key={s} value={s}>{SCOPE_LABELS[s]}</option>
-                            ))}
-                          </select>
+                          <div className="flex flex-col items-stretch gap-1">
+                            <select
+                              value={row.scope}
+                              disabled={!row.can_view}
+                              onChange={(e) => save(row, { scope: e.target.value as PermissionScope })}
+                              className="w-full px-2 py-1 rounded-md border border-input bg-background text-xs focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+                            >
+                              {(Object.keys(SCOPE_LABELS) as PermissionScope[]).map((s) => (
+                                <option key={s} value={s}>{SCOPE_LABELS[s]}</option>
+                              ))}
+                            </select>
+                            {row.scope === "specific_employees" && (
+                              <button
+                                type="button"
+                                onClick={() => setPicker({ row, initial: row.target_employee_ids ?? [] })}
+                                disabled={!row.can_view}
+                                className="inline-flex items-center justify-center gap-1 px-2 py-1 rounded-md border border-primary/30 bg-primary/5 text-[11px] text-primary hover:bg-primary/10 disabled:opacity-50"
+                              >
+                                <Users className="h-3 w-3" />
+                                Pick employees ({(row.target_employee_ids ?? []).length})
+                              </button>
+                            )}
+                          </div>
                         </td>
                         <td className="py-2 text-right">
                           {row.is_overridden && (

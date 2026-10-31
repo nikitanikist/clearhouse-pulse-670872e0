@@ -26,6 +26,11 @@ export interface MatrixAccess {
    * public.employee_managers. L1 admins always get true.
    */
   isLinkedManagerOf: (employeeId: string) => boolean;
+  /**
+   * True when the signed-in user is allowed to see `employeeId` on
+   * `resource` given scope (including specific_employees). L1 admin bypasses.
+   */
+  canSeeEmployeeForResource: (employeeId: string, resource: string) => boolean;
   /** When true the linked-manager lookup is still fetching. */
   linksLoading: boolean;
 }
@@ -77,7 +82,10 @@ export const useCanDo = (): MatrixAccess => {
       const byResource: Record<string, PositionPermissionRow> = {};
       // 1. Seed from position defaults
       for (const r of ((posRows as { data: PositionPermissionRow[] | null }).data ?? [])) {
-        byResource[r.resource_key] = r;
+        byResource[r.resource_key] = {
+          ...r,
+          target_employee_ids: r.target_employee_ids ?? [],
+        };
       }
       // 2. Overlay user overrides -- these take precedence per-cell.
       for (const o of ((overrideRows as { data: Array<Partial<PositionPermissionRow>> | null }).data ?? [])) {
@@ -88,6 +96,7 @@ export const useCanDo = (): MatrixAccess => {
           can_view: !!o.can_view,
           can_edit: !!o.can_edit,
           scope: (o.scope ?? "self") as PositionPermissionRow["scope"],
+          target_employee_ids: o.target_employee_ids ?? [],
           updated_at: o.updated_at ?? new Date().toISOString(),
         };
       }
@@ -144,5 +153,34 @@ export const useCanDo = (): MatrixAccess => {
     return linkedSet.has(employeeId);
   };
 
-  return { isLoading, isAdmin, can, scope, rowFor, isLinkedManagerOf, linksLoading };
+  /**
+   * True when the signed-in user is allowed to see employeeId on the given
+   * tab/nav resource, respecting scope -- including the new
+   * 'specific_employees' option. Used by UI gates so hidden tabs stay hidden.
+   */
+  const canSeeEmployeeForResource = (employeeId: string, resource: string): boolean => {
+    if (isAdmin) return true;
+    const row = data?.byResource[resource];
+    if (!row || !row.can_view) return false;
+    switch (row.scope) {
+      case "all": return true;
+      case "self": return false;
+      case "linked_manager_only": return linkedSet.has(employeeId);
+      case "specific_employees": return (row.target_employee_ids ?? []).includes(employeeId);
+      // own_team / own_department currently fall through to RLS for the data
+      // fetch; the UI treats them as "show the tab, let the DB filter".
+      default: return true;
+    }
+  };
+
+  return {
+    isLoading,
+    isAdmin,
+    can,
+    scope,
+    rowFor,
+    isLinkedManagerOf,
+    canSeeEmployeeForResource,
+    linksLoading,
+  };
 };

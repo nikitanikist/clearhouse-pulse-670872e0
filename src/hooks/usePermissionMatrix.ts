@@ -1,7 +1,13 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 
-export type PermissionScope = "all" | "own_department" | "own_team" | "self" | "linked_manager_only";
+export type PermissionScope =
+  | "all"
+  | "own_department"
+  | "own_team"
+  | "self"
+  | "linked_manager_only"
+  | "specific_employees";
 
 export interface PermissionResource {
   key: string;
@@ -19,6 +25,8 @@ export interface PositionPermissionRow {
   can_view: boolean;
   can_edit: boolean;
   scope: PermissionScope;
+  /** uuid[] of employees this cell is scoped to -- only used when scope='specific_employees'. */
+  target_employee_ids: string[];
   updated_at: string;
 }
 
@@ -49,7 +57,7 @@ export const usePermissionMatrix = () =>
 
 /**
  * Upsert a single (position, resource) toggle. Caller passes the FULL target
- * state (view/edit/scope); server writes it as one row.
+ * state (view/edit/scope + target_employee_ids); server writes it as one row.
  */
 export const useUpdatePermissionCell = () => {
   const qc = useQueryClient();
@@ -59,10 +67,15 @@ export const useUpdatePermissionCell = () => {
     can_view: boolean;
     can_edit: boolean;
     scope: PermissionScope;
+    target_employee_ids?: string[];
   }) => {
+    const payload = {
+      ...args,
+      target_employee_ids: args.target_employee_ids ?? [],
+    };
     const { error } = await supabase
       .from("position_permissions")
-      .upsert(args as never, { onConflict: "position_name,resource_key" });
+      .upsert(payload as never, { onConflict: "position_name,resource_key" });
     if (error) throw error;
     await qc.invalidateQueries({ queryKey: ["permission-matrix"] });
     await qc.invalidateQueries({ queryKey: ["my-permissions"] });

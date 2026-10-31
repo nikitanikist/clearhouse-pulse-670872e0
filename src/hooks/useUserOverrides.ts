@@ -16,6 +16,7 @@ export interface UserOverrideRow {
   can_view: boolean;
   can_edit: boolean;
   scope: PermissionScope;
+  target_employee_ids: string[];
   updated_at: string;
 }
 
@@ -26,6 +27,7 @@ export interface EffectiveMatrixCell {
   can_view: boolean;
   can_edit: boolean;
   scope: PermissionScope;
+  target_employee_ids: string[];
   is_overridden: boolean;
 }
 
@@ -94,10 +96,15 @@ export const useSetUserOverride = () => {
     can_view: boolean;
     can_edit: boolean;
     scope: PermissionScope;
+    target_employee_ids?: string[];
   }) => {
+    const payload = {
+      ...args,
+      target_employee_ids: args.target_employee_ids ?? [],
+    };
     const { error } = await supabase
       .from("user_permission_overrides")
-      .upsert([args] as never, { onConflict: "user_id,resource_key" });
+      .upsert([payload] as never, { onConflict: "user_id,resource_key" });
     if (error) throw error;
     await qc.invalidateQueries({ queryKey: ["user-overrides"] });
     await qc.invalidateQueries({ queryKey: ["can-do"] });
