@@ -4,6 +4,7 @@ import { Copy, KeyRound, Loader2, Pencil, Plus, ShieldAlert, Trash2, UserCircle2
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { DepartmentsCard, PositionsCard } from "@/components/portal/settings/LookupManagers";
+import InterpersonalSkillsCard from "@/components/portal/settings/InterpersonalSkillsCard";
 import DataImport from "@/components/portal/settings/DataImport";
 import AccessRulesCard from "@/components/portal/settings/AccessRulesCard";
 import PermissionsMatrixCard from "@/components/portal/settings/PermissionsMatrixCard";
@@ -791,6 +792,7 @@ const SettingsView = ({ securityLevel, currentUserId }: SettingsViewProps) => {
         <>
           <DepartmentsCard />
           <PositionsCard />
+          <InterpersonalSkillsCard />
         </>
       )}
 

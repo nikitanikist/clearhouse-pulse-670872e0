@@ -1,40 +1,36 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Info, Loader2, Plus, Pencil, Trash2 } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEmployeeInterpersonal } from "@/hooks/useEmployees";
+import { useActiveInterpersonalSkillAreas } from "@/hooks/useInterpersonalSkillAreas";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
-import type { InterpersonalArea, InterpersonalRow } from "@/types/database";
+import type { InterpersonalRow } from "@/types/database";
 import { formatDateLong } from "@/lib/tenure";
-
-const SKILL_AREAS: InterpersonalArea[] = [
-  "Client Communication",
-  "Team Collaboration",
-  "Adaptability",
-  "Problem-Solving",
-  "Initiative",
-  "Commitment to Firm Values",
-  "Dependability During Peak Seasons",
-  "Support for Team Members",
-  "Contributions to Firm Culture",
-  "Business Development",
-];
 
 const InterpersonalSkills = ({ employeeId }: { employeeId: string }) => {
   const { data: skills = [], isLoading } = useEmployeeInterpersonal(employeeId);
+  const { data: skillAreas = [] } = useActiveInterpersonalSkillAreas();
   const queryClient = useQueryClient();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const permissions = usePermissions();
   const [editing, setEditing] = useState<InterpersonalRow | null>(null);
-  const [skillArea, setSkillArea] = useState<InterpersonalArea>(SKILL_AREAS[0]);
+  const [skillArea, setSkillArea] = useState<string>("");
   const [assessment, setAssessment] = useState("");
   const [saving, setSaving] = useState(false);
 
+  // Default the picker to the first available skill area once the list loads.
+  useEffect(() => {
+    if (!skillArea && skillAreas.length > 0) {
+      setSkillArea(skillAreas[0].name);
+    }
+  }, [skillAreas, skillArea]);
+
   const openAdd = () => {
     setEditing(null);
-    setSkillArea(SKILL_AREAS[0]);
+    setSkillArea(skillAreas[0]?.name ?? "");
     setAssessment("");
     setDialogOpen(true);
   };
@@ -158,11 +154,14 @@ const InterpersonalSkills = ({ employeeId }: { employeeId: string }) => {
                 <label className="block text-xs font-medium text-muted-foreground mb-1.5">Skill Area</label>
                 <select
                   value={skillArea}
-                  onChange={(e) => setSkillArea(e.target.value as InterpersonalArea)}
+                  onChange={(e) => setSkillArea(e.target.value)}
                   className="w-full px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                 >
-                  {SKILL_AREAS.map((a) => (
-                    <option key={a} value={a}>{a}</option>
+                  {skillAreas.length === 0 && (
+                    <option value="" disabled>— No skill areas configured —</option>
+                  )}
+                  {skillAreas.map((a) => (
+                    <option key={a.name} value={a.name}>{a.name}</option>
                   ))}
                 </select>
               </div>
