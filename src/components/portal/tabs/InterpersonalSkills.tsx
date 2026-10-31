@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Info, Loader2, Plus, Pencil, Trash2 } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Info, Loader2, Plus, Pencil, Trash2, CheckCircle2, X } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEmployeeInterpersonal } from "@/hooks/useEmployees";
@@ -9,6 +9,8 @@ import { toast } from "sonner";
 import type { InterpersonalRow } from "@/types/database";
 import { formatDateLong } from "@/lib/tenure";
 
+type SaveState = "idle" | "saving" | "saved" | "error";
+
 const InterpersonalSkills = ({ employeeId }: { employeeId: string }) => {
   const { data: skills = [], isLoading } = useEmployeeInterpersonal(employeeId);
   const { data: skillAreas = [] } = useActiveInterpersonalSkillAreas();
@@ -16,10 +18,19 @@ const InterpersonalSkills = ({ employeeId }: { employeeId: string }) => {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const permissions = usePermissions();
+  // Row currently being edited. For a brand-new entry this starts null;
+  // once the first auto-save fires we swap it to the inserted row so later
+  // saves become updates against that id.
   const [editing, setEditing] = useState<InterpersonalRow | null>(null);
   const [skillArea, setSkillArea] = useState<string>("");
   const [assessment, setAssessment] = useState("");
-  const [saving, setSaving] = useState(false);
+  const [saveState, setSaveState] = useState<SaveState>("idle");
+
+  // Debounce + "did we already save this snapshot?" guard
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSaved = useRef<string>("");
+  const dialogOpenRef = useRef(dialogOpen);
+  useEffect(() => { dialogOpenRef.current = dialogOpen; }, [dialogOpen]);
 
   // Default the picker to the first available skill area once the list loads.
   useEffect(() => {
@@ -28,10 +39,15 @@ const InterpersonalSkills = ({ employeeId }: { employeeId: string }) => {
     }
   }, [skillAreas, skillArea]);
 
+  const invalidate = () =>
+    queryClient.invalidateQueries({ queryKey: ["employee", employeeId, "interpersonal"] });
+
   const openAdd = () => {
     setEditing(null);
     setSkillArea(skillAreas[0]?.name ?? "");
     setAssessment("");
+    lastSaved.current = "";
+    setSaveState("idle");
     setDialogOpen(true);
   };
 
@@ -39,32 +55,60 @@ const InterpersonalSkills = ({ employeeId }: { employeeId: string }) => {
     setEditing(row);
     setSkillArea(row.skill_area);
     setAssessment(row.assessment_text);
+    lastSaved.current = JSON.stringify({ skillArea: row.skill_area, assessment: row.assessment_text });
+    setSaveState("idle");
     setDialogOpen(true);
   };
 
-  const invalidate = () =>
-    queryClient.invalidateQueries({ queryKey: ["employee", employeeId, "interpersonal"] });
-
-  const save = async () => {
+  // Auto-save (debounced 1.2s). Insert on first save of a new row; update
+  // subsequent saves against the row's id.
+  useEffect(() => {
+    if (!dialogOpen) return;
     if (!assessment.trim()) return;
-    setSaving(true);
-    const payload = {
-      employee_id: employeeId,
-      skill_area: skillArea,
-      assessment_text: assessment.trim(),
-    };
-    const { error } = editing
-      ? await supabase.from("employee_interpersonal").update(payload as never).eq("id", editing.id)
-      : await supabase.from("employee_interpersonal").insert([payload] as never);
-    setSaving(false);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-    toast.success(editing ? "Assessment updated" : "Assessment added");
-    setDialogOpen(false);
-    invalidate();
-  };
+    if (!skillArea) return;
+    const snapshot = JSON.stringify({ skillArea, assessment });
+    if (snapshot === lastSaved.current) return;
+
+    if (timer.current) clearTimeout(timer.current);
+    setSaveState("saving");
+    timer.current = setTimeout(async () => {
+      const payload = {
+        employee_id: employeeId,
+        skill_area: skillArea,
+        assessment_text: assessment.trim(),
+      };
+      if (editing) {
+        const { error } = await supabase
+          .from("employee_interpersonal")
+          .update(payload as never)
+          .eq("id", editing.id);
+        if (error) {
+          setSaveState("error");
+          toast.error(`Could not save: ${error.message}`);
+          return;
+        }
+      } else {
+        const { data, error } = await supabase
+          .from("employee_interpersonal")
+          .insert([payload] as never)
+          .select("*")
+          .single();
+        if (error) {
+          setSaveState("error");
+          toast.error(`Could not save: ${error.message}`);
+          return;
+        }
+        setEditing(data as InterpersonalRow);
+      }
+      lastSaved.current = snapshot;
+      setSaveState("saved");
+      invalidate();
+      setTimeout(() => {
+        if (dialogOpenRef.current) setSaveState((s) => (s === "saved" ? "idle" : s));
+      }, 1200);
+    }, 1200);
+    return () => { if (timer.current) clearTimeout(timer.current); };
+  }, [dialogOpen, skillArea, assessment, editing, employeeId]);
 
   const remove = async (row: InterpersonalRow) => {
     if (!confirm(`Delete the "${row.skill_area}" assessment?`)) return;
@@ -140,15 +184,24 @@ const InterpersonalSkills = ({ employeeId }: { employeeId: string }) => {
       {dialogOpen && (
         <div
           className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
-          onClick={() => !saving && setDialogOpen(false)}
+          onClick={() => setDialogOpen(false)}
         >
           <div
             className="bg-card rounded-lg shadow-lg w-full max-w-lg p-6"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-heading font-bold text-foreground mb-4">
-              {editing ? "Edit assessment" : "Add assessment"}
-            </h3>
+            <div className="flex items-start justify-between mb-4">
+              <h3 className="text-lg font-heading font-bold text-foreground">
+                {editing ? "Edit assessment" : "Add assessment"}
+              </h3>
+              <button
+                onClick={() => setDialogOpen(false)}
+                className="p-1 rounded hover:bg-muted text-muted-foreground"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
             <div className="space-y-4">
               <div>
                 <label className="block text-xs font-medium text-muted-foreground mb-1.5">Skill Area</label>
@@ -171,26 +224,18 @@ const InterpersonalSkills = ({ employeeId }: { employeeId: string }) => {
                   value={assessment}
                   onChange={(e) => setAssessment(e.target.value)}
                   rows={5}
-                  placeholder="Write the assessment..."
+                  placeholder="Write the assessment… (saves as you type)"
                   className="w-full px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                 />
               </div>
             </div>
-            <div className="flex justify-end gap-2 mt-6">
+            <div className="flex items-center justify-between gap-2 mt-6">
+              <SaveIndicator state={saveState} />
               <button
                 onClick={() => setDialogOpen(false)}
-                disabled={saving}
-                className="px-4 py-2 rounded-md border border-border text-sm font-medium hover:bg-muted transition-colors"
+                className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors"
               >
-                Cancel
-              </button>
-              <button
-                onClick={save}
-                disabled={saving || !assessment.trim()}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
-              >
-                {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-                {editing ? "Save changes" : "Add assessment"}
+                Done
               </button>
             </div>
           </div>
@@ -198,6 +243,24 @@ const InterpersonalSkills = ({ employeeId }: { employeeId: string }) => {
       )}
     </div>
   );
+};
+
+const SaveIndicator = ({ state }: { state: SaveState }) => {
+  if (state === "saving")
+    return (
+      <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+        <Loader2 className="h-3 w-3 animate-spin" /> Saving…
+      </span>
+    );
+  if (state === "saved")
+    return (
+      <span className="inline-flex items-center gap-1.5 text-xs text-success">
+        <CheckCircle2 className="h-3 w-3" /> Saved
+      </span>
+    );
+  if (state === "error")
+    return <span className="text-xs text-destructive">Save failed</span>;
+  return <span className="text-xs text-muted-foreground opacity-60">Auto-saves as you type</span>;
 };
 
 export default InterpersonalSkills;

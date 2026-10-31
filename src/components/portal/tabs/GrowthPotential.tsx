@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Info, Loader2, Pencil } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Info, Loader2, CheckCircle2 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEmployeeRow } from "@/hooks/useEmployees";
 import { supabase } from "@/lib/supabase";
@@ -14,18 +14,24 @@ const potentialOptions: { value: PotentialRating; desc: string }[] = [
   { value: "Ready Soon", desc: "12-24 months" },
 ];
 
+type SaveState = "idle" | "saving" | "saved" | "error";
+
 const GrowthPotential = ({ employeeId }: { employeeId: string }) => {
   const { data: employee, isLoading } = useEmployeeRow(employeeId);
   const queryClient = useQueryClient();
   const permissions = usePermissions();
 
   const [savingRating, setSavingRating] = useState<PotentialRating | null>(null);
-  const [editingRationale, setEditingRationale] = useState(false);
-  const [rationaleDraft, setRationaleDraft] = useState("");
-  const [savingRationale, setSavingRationale] = useState(false);
+  const [rationale, setRationale] = useState("");
+  const [saveState, setSaveState] = useState<SaveState>("idle");
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSaved = useRef<string>("");
 
   useEffect(() => {
-    setRationaleDraft(employee?.growth_rationale ?? "");
+    const text = employee?.growth_rationale ?? "";
+    setRationale(text);
+    lastSaved.current = text;
+    setSaveState("idle");
   }, [employee?.growth_rationale]);
 
   const invalidate = () => {
@@ -49,21 +55,30 @@ const GrowthPotential = ({ employeeId }: { employeeId: string }) => {
     invalidate();
   };
 
-  const saveRationale = async () => {
-    setSavingRationale(true);
-    const { error } = await supabase
-      .from("employees")
-      .update({ growth_rationale: rationaleDraft } as never)
-      .eq("id", employeeId);
-    setSavingRationale(false);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-    toast.success("Rationale updated");
-    setEditingRationale(false);
-    invalidate();
-  };
+  // Debounced auto-save (1.2s after last keystroke)
+  useEffect(() => {
+    if (!employee) return;
+    if (!permissions.can_edit_growth) return;
+    if (rationale === lastSaved.current) return;
+    if (timer.current) clearTimeout(timer.current);
+    setSaveState("saving");
+    timer.current = setTimeout(async () => {
+      const { error } = await supabase
+        .from("employees")
+        .update({ growth_rationale: rationale } as never)
+        .eq("id", employeeId);
+      if (error) {
+        setSaveState("error");
+        toast.error(`Could not save: ${error.message}`);
+        return;
+      }
+      lastSaved.current = rationale;
+      setSaveState("saved");
+      setTimeout(() => setSaveState((s) => (s === "saved" ? "idle" : s)), 1200);
+      invalidate();
+    }, 1200);
+    return () => { if (timer.current) clearTimeout(timer.current); };
+  }, [rationale, employee, employeeId, permissions.can_edit_growth]);
 
   if (isLoading) {
     return (
@@ -119,45 +134,16 @@ const GrowthPotential = ({ employeeId }: { employeeId: string }) => {
               <p className="text-xs text-muted-foreground mt-1">Last updated {formatDateLong(employee.updated_at)}</p>
             )}
           </div>
-          {!editingRationale && permissions.can_edit_growth && (
-            <button
-              onClick={() => setEditingRationale(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-            >
-              <Pencil className="h-3.5 w-3.5" /> Edit
-            </button>
-          )}
+          <SaveIndicator state={saveState} readOnly={!permissions.can_edit_growth} />
         </div>
-        {editingRationale ? (
-          <div className="space-y-3">
-            <textarea
-              value={rationaleDraft}
-              onChange={(e) => setRationaleDraft(e.target.value)}
-              rows={5}
-              placeholder="Explain the rationale for this potential rating..."
-              className="w-full px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
-            />
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => {
-                  setRationaleDraft(employee?.growth_rationale ?? "");
-                  setEditingRationale(false);
-                }}
-                disabled={savingRationale}
-                className="px-4 py-2 rounded-md border border-border text-sm font-medium hover:bg-muted transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={saveRationale}
-                disabled={savingRationale}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
-              >
-                {savingRationale && <Loader2 className="h-4 w-4 animate-spin" />}
-                Save
-              </button>
-            </div>
-          </div>
+        {permissions.can_edit_growth ? (
+          <textarea
+            value={rationale}
+            onChange={(e) => setRationale(e.target.value)}
+            rows={5}
+            placeholder="Explain the rationale for this potential rating… (saves as you type)"
+            className="w-full px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+          />
         ) : (
           <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
             {employee?.growth_rationale || "No rationale recorded yet."}
@@ -166,6 +152,25 @@ const GrowthPotential = ({ employeeId }: { employeeId: string }) => {
       </div>
     </div>
   );
+};
+
+const SaveIndicator = ({ state, readOnly }: { state: SaveState; readOnly: boolean }) => {
+  if (readOnly) return <span className="text-xs text-muted-foreground">Read-only</span>;
+  if (state === "saving")
+    return (
+      <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+        <Loader2 className="h-3 w-3 animate-spin" /> Saving…
+      </span>
+    );
+  if (state === "saved")
+    return (
+      <span className="inline-flex items-center gap-1.5 text-xs text-success">
+        <CheckCircle2 className="h-3 w-3" /> Saved
+      </span>
+    );
+  if (state === "error")
+    return <span className="text-xs text-destructive">Save failed</span>;
+  return <span className="text-xs text-muted-foreground opacity-60">Auto-saves as you type</span>;
 };
 
 export default GrowthPotential;
