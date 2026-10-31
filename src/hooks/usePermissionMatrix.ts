@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 
-export type PermissionScope = "all" | "own_department" | "own_team" | "self";
+export type PermissionScope = "all" | "own_department" | "own_team" | "self" | "linked_manager_only";
 
 export interface PermissionResource {
   key: string;

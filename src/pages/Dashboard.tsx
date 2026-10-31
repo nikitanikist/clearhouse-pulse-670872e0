@@ -62,12 +62,32 @@ const Dashboard = () => {
   const { data: employees = [], isLoading, error } = useEmployees();
   const matrix = useCanDo();
 
-  // Only tabs the signed-in user's position is allowed to view.
-  const visibleTabs = ALL_TABS.filter((t) => matrix.isLoading || matrix.can(t.resource, "view"));
-
   const [section, setSection] = useState<NavSection>("dashboard");
   const [employeeView, setEmployeeView] = useState<"list" | "detail">("list");
   const [selected, setSelected] = useState<Employee | null>(null);
+
+  /**
+   * Hide a tab when matrix says the user can view it, but its scope is
+   * 'linked_manager_only' AND the signed-in user is NOT a linked manager
+   * of the currently-selected employee. The 3 locked tabs (Interpersonal,
+   * Growth & Potential, Manager Notes) default to this scope.
+   */
+  const tabHiddenByLinkedScope = (resource: string, selectedId?: string): boolean => {
+    if (matrix.isLoading || matrix.linksLoading) return false;
+    if (matrix.isAdmin) return false;
+    if (matrix.scope(resource) !== "linked_manager_only") return false;
+    if (!selectedId) return true;
+    return !matrix.isLinkedManagerOf(selectedId);
+  };
+
+  // Only tabs the signed-in user's position is allowed to view AND, for
+  // linked_manager_only tabs, that the user is actually a linked manager of
+  // the currently-selected employee.
+  const visibleTabs = ALL_TABS.filter((t) => {
+    if (!(matrix.isLoading || matrix.can(t.resource, "view"))) return false;
+    if (tabHiddenByLinkedScope(t.resource, selected?.id)) return false;
+    return true;
+  });
   const [activeTab, setActiveTab] = useState<TabKey>("profile");
   const [pendingFilters, setPendingFilters] = useState<{ department?: string; potential?: string | string[] } | null>(null);
 

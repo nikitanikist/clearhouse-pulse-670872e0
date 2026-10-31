@@ -16,6 +16,7 @@ const SCOPE_LABELS: Record<PermissionScope, string> = {
   all: "All employees",
   own_department: "Own department",
   own_team: "Own team",
+  linked_manager_only: "Only when I'm a linked manager",
   self: "Only self",
 };
 

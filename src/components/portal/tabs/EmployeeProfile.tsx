@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Mail, Phone, User, Calendar, Building2, MapPin, Briefcase, Users, Pencil, Loader2 } from "lucide-react";
+import { Mail, Phone, User, Calendar, Building2, MapPin, Briefcase, Users, Pencil, Loader2, Plus, X } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -21,6 +21,7 @@ import { useEmployees } from "@/hooks/useEmployees";
 import { useDepartmentNames, usePositionNames } from "@/hooks/useLookups";
 import SupervisorCombobox from "../SupervisorCombobox";
 import { formatTenure, formatDateLong } from "@/lib/tenure";
+import { useEmployeeManagers, useSaveEmployeeManagers } from "@/hooks/useEmployeeManagers";
 
 
 const locations: Location[] = ["Canada", "India"];
@@ -40,11 +41,15 @@ const EmployeeProfile = ({ employee, readOnly = false }: { employee: Employee; r
   const { names: departments } = useDepartmentNames();
   const queryClient = useQueryClient();
   const { data: allEmployees = [] } = useEmployees();
+  const { data: existingManagers = [] } = useEmployeeManagers(employee.id);
+  const saveManagers = useSaveEmployeeManagers();
   const permissions = usePermissions();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [local, setLocal] = useState(employee);
+  const [managers, setManagers] = useState<string[]>([]);
+  const [baselineManagers, setBaselineManagers] = useState<string[]>([]);
 
   const buildInitialForm = (e: Employee) => ({
     name: e.name,
@@ -53,8 +58,6 @@ const EmployeeProfile = ({ employee, readOnly = false }: { employee: Employee; r
     location: e.location,
     joining_date: e.joiningDate ?? "",
     role_start_date: e.roleStartDate ?? "",
-    supervisor: e.supervisor,
-    coSupervisor: e.coSupervisor,
     email: e.email,
     phone: e.phone,
   });
@@ -68,7 +71,21 @@ const EmployeeProfile = ({ employee, readOnly = false }: { employee: Employee; r
     setBaseline(next);
   }, [employee]);
 
-  const isDirty = JSON.stringify(form) !== JSON.stringify(baseline);
+  // Seed the manager list editor from the many-to-many table; fall back to
+  // the legacy supervisor + co_supervisor columns on the first edit of a
+  // record that hasn't been backfilled yet.
+  useEffect(() => {
+    const fromTable = existingManagers.map((m) => m.manager_name);
+    const seed = fromTable.length > 0
+      ? fromTable
+      : [employee.supervisor, employee.coSupervisor].filter((n): n is string => !!n && n.trim().length > 0);
+    setManagers(seed);
+    setBaselineManagers(seed);
+  }, [existingManagers, employee.supervisor, employee.coSupervisor]);
+
+  const isDirty =
+    JSON.stringify(form) !== JSON.stringify(baseline)
+    || JSON.stringify(managers) !== JSON.stringify(baselineManagers);
 
   const requestCancel = () => {
     if (isDirty) setConfirmDiscard(true);
@@ -76,6 +93,7 @@ const EmployeeProfile = ({ employee, readOnly = false }: { employee: Employee; r
   };
   const discard = () => {
     setForm(baseline);
+    setManagers(baselineManagers);
     setConfirmDiscard(false);
     setEditing(false);
   };
@@ -85,6 +103,7 @@ const EmployeeProfile = ({ employee, readOnly = false }: { employee: Employee; r
       toast.error("Name is required");
       return;
     }
+    const cleanManagers = managers.map((m) => m.trim()).filter((m) => m.length > 0);
     setSaving(true);
     const { error } = await supabase
       .from("employees")
@@ -95,17 +114,25 @@ const EmployeeProfile = ({ employee, readOnly = false }: { employee: Employee; r
         location: form.location,
         joining_date: form.joining_date || null,
         role_start_date: form.role_start_date || null,
-        supervisor: form.supervisor,
-        co_supervisor: form.coSupervisor || null,
         email: form.email,
         phone: form.phone,
       } as never)
       .eq("id", employee.id);
-    setSaving(false);
     if (error) {
+      setSaving(false);
       toast.error(error.message);
       return;
     }
+
+    try {
+      await saveManagers({ employee_id: employee.id, manager_names: cleanManagers });
+    } catch (e) {
+      setSaving(false);
+      toast.error(`Could not save managers: ${(e as Error).message}`);
+      return;
+    }
+
+    setSaving(false);
     setLocal({
       ...local,
       name: form.name.trim(),
@@ -114,12 +141,14 @@ const EmployeeProfile = ({ employee, readOnly = false }: { employee: Employee; r
       location: form.location,
       joiningDate: form.joining_date || null,
       roleStartDate: form.role_start_date || null,
-      supervisor: form.supervisor,
-      coSupervisor: form.coSupervisor,
+      supervisor: cleanManagers[0] ?? "",
+      coSupervisor: cleanManagers[1] ?? "",
       email: form.email,
       phone: form.phone,
     });
     setBaseline(form);
+    setBaselineManagers(cleanManagers);
+    setManagers(cleanManagers);
     setEditing(false);
     toast.success("Profile updated");
     queryClient.invalidateQueries({ queryKey: ["employees"] });
@@ -189,25 +218,52 @@ const EmployeeProfile = ({ employee, readOnly = false }: { employee: Employee; r
               <Label htmlFor="ep-role-start" className={labelCls}>Role Start Date</Label>
               <Input id="ep-role-start" type="date" value={form.role_start_date} onChange={(e) => setForm({ ...form, role_start_date: e.target.value })} className="mt-1.5" />
             </div>
-            <div>
-              <Label htmlFor="ep-supervisor" className={labelCls}>Manager</Label>
-              <SupervisorCombobox
-                id="ep-supervisor"
-                value={form.supervisor}
-                onChange={(v) => setForm({ ...form, supervisor: v })}
-                employees={allEmployees}
-                excludeId={employee.id}
-              />
-            </div>
-            <div>
-              <Label htmlFor="ep-co-supervisor" className={labelCls}>Second Manager (optional)</Label>
-              <SupervisorCombobox
-                id="ep-co-supervisor"
-                value={form.coSupervisor}
-                onChange={(v) => setForm({ ...form, coSupervisor: v })}
-                employees={allEmployees}
-                excludeId={employee.id}
-              />
+            <div className="md:col-span-2">
+              <div className="flex items-center justify-between">
+                <Label className={labelCls}>Managers (linked to this employee)</Label>
+                <button
+                  type="button"
+                  onClick={() => setManagers([...managers, ""])}
+                  className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                >
+                  <Plus className="h-3 w-3" /> Add another
+                </button>
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Interpersonal Skills, Growth &amp; Potential and Manager Notes are only visible to the
+                people listed here. Add as many as you need.
+              </p>
+              <div className="mt-2 space-y-2">
+                {managers.length === 0 && (
+                  <p className="text-xs text-muted-foreground italic">
+                    No managers linked yet. Click "Add another" to pick one.
+                  </p>
+                )}
+                {managers.map((m, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <div className="flex-1 min-w-0">
+                      <SupervisorCombobox
+                        id={`ep-mgr-${i}`}
+                        value={m}
+                        onChange={(v) =>
+                          setManagers(managers.map((x, idx) => (idx === i ? v : x)))
+                        }
+                        employees={allEmployees}
+                        excludeId={employee.id}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setManagers(managers.filter((_, idx) => idx !== i))}
+                      className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-muted"
+                      aria-label="Remove manager"
+                      title="Remove manager"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
             <div>
               <Label htmlFor="ep-email" className={labelCls}>Email</Label>
@@ -268,9 +324,25 @@ const EmployeeProfile = ({ employee, readOnly = false }: { employee: Employee; r
               <Field icon={Calendar} label="Role Start Date" value={formatDateLong(local.roleStartDate)} />
             )}
             <Field icon={Calendar} label="Tenure in Current Role" value={roleTenureDisplay} />
-            <Field icon={Users} label="Manager" value={local.supervisor} />
-            {local.coSupervisor && (
-              <Field icon={Users} label="Second Manager" value={local.coSupervisor} />
+            {managers.length === 0 ? (
+              <Field icon={Users} label="Managers" value="—" />
+            ) : (
+              <div className="flex items-start gap-3 py-3">
+                <Users className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-xs text-muted-foreground">Managers</p>
+                  <ul className="text-sm font-medium text-foreground space-y-0.5">
+                    {managers.map((m, i) => (
+                      <li key={i}>
+                        {m}
+                        {i === 0 && managers.length > 1 && (
+                          <span className="ml-2 text-[10px] uppercase tracking-wider text-muted-foreground">primary</span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
             )}
             <Field icon={Mail} label="Email" value={local.email} />
             <Field icon={Phone} label="Phone" value={local.phone} />
